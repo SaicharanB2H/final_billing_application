@@ -121,7 +121,7 @@ class _BillsHistoryScreenState extends State<BillsHistoryScreen> {
                   ),
                   SizedBox(height: 8),
                   DropdownButtonFormField<PaymentStatus?>(
-                    value: tempPaymentStatus,
+                    initialValue: tempPaymentStatus,
                     decoration: InputDecoration(
                       border: OutlineInputBorder(),
                       hintText: 'All Status',

@@ -20,9 +20,9 @@ class PdfService {
 
     // Default shop settings if not provided
     shopSettings ??= ShopSettings(
-      shopName: 'Jewelry Shop',
+      shopName: 'Kamakshi Jewellers',
       address: '123 Main Street, City, State 12345',
-      phone: '+1234567890',
+      phone: '+91 7680959867',
       email: 'info@jewelryshop.com',
       goldRate: 5500.0,
       silverRate: 75.0,
@@ -276,13 +276,13 @@ class PdfService {
               _buildTableCell(item.weight.toStringAsFixed(3)),
               _buildTableCell(item.purity),
               _buildTableCell(
-                '₹${NumberFormat('#,##,###.00').format(item.currentRate)}',
+                'Rs.${NumberFormat('#,##,###.00').format(item.currentRate)}',
               ),
               _buildTableCell(
-                '₹${NumberFormat('#,##,###.00').format(item.makingCharges)}',
+                'Rs.${NumberFormat('#,##,###.00').format(item.makingCharges)}',
               ),
               _buildTableCell(
-                '₹${NumberFormat('#,##,###.00').format(item.itemTotal)}',
+                'Rs.${NumberFormat('#,##,###.00').format(item.itemTotal)}',
                 isBold: true,
               ),
             ],
@@ -347,7 +347,7 @@ class PdfService {
                       ),
                     ),
                     pw.Text(
-                      '₹${NumberFormat('#,##,###.00').format(invoice.totalAmount)}',
+                      'Rs.${NumberFormat('#,##,###.00').format(invoice.totalAmount)}',
                       style: pw.TextStyle(
                         fontSize: 16,
                         fontWeight: pw.FontWeight.bold,
@@ -373,7 +373,7 @@ class PdfService {
         children: [
           pw.Text(label, style: pw.TextStyle(fontSize: 12)),
           pw.Text(
-            '₹${NumberFormat('#,##,###.00').format(amount)}',
+            'Rs.${NumberFormat('#,##,###.00').format(amount)}',
             style: pw.TextStyle(fontSize: 12),
           ),
         ],
@@ -407,15 +407,15 @@ class PdfService {
             style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold),
           ),
           pw.Text(
-            '• All items are sold as per current market rates',
+            '- All items are sold as per current market rates',
             style: pw.TextStyle(fontSize: 9),
           ),
           pw.Text(
-            '• Making charges are non-refundable',
+            '- Making charges are non-refundable',
             style: pw.TextStyle(fontSize: 9),
           ),
           pw.Text(
-            '• Goods once sold cannot be returned or exchanged',
+            '- Goods once sold can be returned within 7 days from the date of purchase',
             style: pw.TextStyle(fontSize: 9),
           ),
           pw.SizedBox(height: 10),

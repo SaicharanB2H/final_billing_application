@@ -7,7 +7,6 @@ import '../services/pdf_service.dart';
 import '../services/data_export_service.dart';
 import '../database/database_helper.dart';
 import 'package:provider/provider.dart';
-import '../providers/rate_provider.dart';
 
 class InvoiceProvider extends ChangeNotifier {
   final InvoiceService _invoiceService = InvoiceService();

@@ -1,9 +1,7 @@
-import 'package:flutter/foundation.dart';
 import '../models/invoice.dart';
 import '../models/customer.dart';
 import '../database/database_helper.dart';
 import '../models/product.dart';
-import '../providers/rate_provider.dart';
 
 class InvoiceService {
   final DatabaseHelper _dbHelper = DatabaseHelper();

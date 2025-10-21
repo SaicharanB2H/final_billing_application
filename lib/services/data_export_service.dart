@@ -292,10 +292,11 @@ class DataExportService {
       final filePath = '${directory.path}/$fileName';
 
       List<int>? excelBytes = excel.save();
-      if (excelBytes != null) {
-        final file = File(filePath);
-        await file.writeAsBytes(excelBytes);
+      if (excelBytes == null) {
+        throw Exception('Failed to generate Excel file');
       }
+      final file = File(filePath);
+      await file.writeAsBytes(excelBytes);
 
       return filePath;
     } catch (e) {
