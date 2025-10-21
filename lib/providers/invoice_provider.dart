@@ -4,14 +4,17 @@ import '../models/customer.dart';
 import '../models/shop_settings.dart';
 import '../services/invoice_service.dart';
 import '../services/pdf_service.dart';
+import '../services/data_export_service.dart';
 import '../database/database_helper.dart';
+import 'package:provider/provider.dart';
+import '../providers/rate_provider.dart';
 
 class InvoiceProvider extends ChangeNotifier {
   final InvoiceService _invoiceService = InvoiceService();
   final PdfService _pdfService = PdfService();
   final DatabaseHelper _databaseHelper = DatabaseHelper();
-
-  List<Invoice> _invoices = [];
+  final DataExportService _exportService = DataExportService();
+  final List<Invoice> _invoices = [];
   bool _isLoading = false;
   String? _error;
 
@@ -25,7 +28,8 @@ class InvoiceProvider extends ChangeNotifier {
     _setError(null);
 
     try {
-      _invoices = await _invoiceService.getAllInvoices();
+      _invoices.clear();
+      _invoices.addAll(await _invoiceService.getAllInvoices());
       notifyListeners();
     } catch (e) {
       _setError('Failed to load invoices: $e');
@@ -44,6 +48,8 @@ class InvoiceProvider extends ChangeNotifier {
     required int userId,
     double taxPercent = 0.0, // Default to 0 (no tax)
     String? notes,
+    double cgstPercent = 1.5, // Default CGST percentage
+    double sgstPercent = 1.5, // Default SGST percentage
   }) async {
     _setLoading(true);
     _setError(null);
@@ -59,6 +65,8 @@ class InvoiceProvider extends ChangeNotifier {
         userId: userId,
         taxPercent: taxPercent,
         notes: notes,
+        cgstPercent: cgstPercent,
+        sgstPercent: sgstPercent,
       );
 
       // Save to database

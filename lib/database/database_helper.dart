@@ -21,7 +21,12 @@ class DatabaseHelper {
 
   Future<Database> _initDatabase() async {
     String path = join(await getDatabasesPath(), 'jewelry_shop.db');
-    return await openDatabase(path, version: 1, onCreate: _onCreate);
+    return await openDatabase(
+      path, 
+      version: 2, // Updated version to 2
+      onCreate: _onCreate,
+      onUpgrade: _onUpgrade, // Added onUpgrade callback
+    );
   }
 
   Future<void> _onCreate(Database db, int version) async {
@@ -137,7 +142,9 @@ class DatabaseHelper {
         default_wastage_silver REAL NOT NULL DEFAULT 5.0,
         currency_symbol TEXT NOT NULL DEFAULT '₹',
         rates_updated_at TEXT NOT NULL,
-        updated_at TEXT
+        updated_at TEXT,
+        cgst_percent REAL NOT NULL DEFAULT 1.5,
+        sgst_percent REAL NOT NULL DEFAULT 1.5
       )
     ''');
 
@@ -182,7 +189,23 @@ class DatabaseHelper {
       'default_wastage_silver': 5.0,
       'currency_symbol': '₹',
       'rates_updated_at': DateTime.now().toIso8601String(),
+      'cgst_percent': 1.5,
+      'sgst_percent': 1.5,
     });
+  }
+
+  // Handle database upgrades
+  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      // Add CGST and SGST columns to shop_settings table
+      try {
+        await db.execute('ALTER TABLE shop_settings ADD COLUMN cgst_percent REAL NOT NULL DEFAULT 1.5');
+        await db.execute('ALTER TABLE shop_settings ADD COLUMN sgst_percent REAL NOT NULL DEFAULT 1.5');
+      } catch (e) {
+        // If columns already exist, update existing records
+        await db.rawUpdate('UPDATE shop_settings SET cgst_percent = 1.5, sgst_percent = 1.5');
+      }
+    }
   }
 
   // User operations

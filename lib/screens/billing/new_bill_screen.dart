@@ -19,11 +19,16 @@ class _NewBillScreenState extends State<NewBillScreen> {
   final TextEditingController _customerPhoneController =
       TextEditingController();
   final List<BillItem> _billItems = [];
+  double _subtotal = 0.0;
+  double _cgstAmount = 0.0;
+  double _sgstAmount = 0.0;
   double _totalAmount = 0.0;
   double _goldRate = 5500.0;
   double _silverRate = 75.0;
   double _goldWastage = 8.0;
   double _silverWastage = 5.0;
+  double _cgstPercent = 1.5;
+  double _sgstPercent = 1.5;
 
   @override
   void initState() {
@@ -40,25 +45,20 @@ class _NewBillScreenState extends State<NewBillScreen> {
       _silverRate = rateProvider.silverRate;
       _goldWastage = rateProvider.goldWastage;
       _silverWastage = rateProvider.silverWastage;
+      _cgstPercent = rateProvider.cgstPercent;
+      _sgstPercent = rateProvider.sgstPercent;
     });
   }
 
-  @override
-  void dispose() {
-    _customerNameController.dispose();
-    _customerPhoneController.dispose();
-    super.dispose();
-  }
-
-  void _addBillItem() {
+  void _addNewBillItem() {
     setState(() {
       _billItems.add(
         BillItem(
-          id: DateTime.now().millisecondsSinceEpoch.toString(),
+          id: DateTime.now().toString(),
           productName: '',
           productType: BillProductType.gold,
           weight: 0.0,
-          purity: 22,
+          purity: 22.0,
           makingCharges: 0.0,
           rate: _goldRate,
           wastagePercent: _goldWastage,
@@ -75,12 +75,21 @@ class _NewBillScreenState extends State<NewBillScreen> {
   }
 
   void _calculateTotal() {
-    double total = 0.0;
+    double subtotal = 0.0;
     for (var item in _billItems) {
-      total += item.totalAmount;
+      subtotal += item.totalAmount;
     }
+    
+    // Calculate CGST and SGST
+    double cgstAmount = subtotal * (_cgstPercent / 100);
+    double sgstAmount = subtotal * (_sgstPercent / 100);
+    double totalAmount = subtotal + cgstAmount + sgstAmount;
+    
     setState(() {
-      _totalAmount = total;
+      _subtotal = subtotal;
+      _cgstAmount = cgstAmount;
+      _sgstAmount = sgstAmount;
+      _totalAmount = totalAmount;
     });
   }
 
@@ -140,6 +149,8 @@ class _NewBillScreenState extends State<NewBillScreen> {
         silverRate: _silverRate,
         userId: 1, // Default user ID, should be from auth provider
         notes: 'Generated from billing screen',
+        cgstPercent: _cgstPercent,
+        sgstPercent: _sgstPercent,
       );
 
       // Close loading dialog
@@ -217,11 +228,15 @@ class _NewBillScreenState extends State<NewBillScreen> {
         if (_goldRate != rateProvider.goldRate ||
             _silverRate != rateProvider.silverRate ||
             _goldWastage != rateProvider.goldWastage ||
-            _silverWastage != rateProvider.silverWastage) {
+            _silverWastage != rateProvider.silverWastage ||
+            _cgstPercent != rateProvider.cgstPercent ||
+            _sgstPercent != rateProvider.sgstPercent) {
           _goldRate = rateProvider.goldRate;
           _silverRate = rateProvider.silverRate;
           _goldWastage = rateProvider.goldWastage;
           _silverWastage = rateProvider.silverWastage;
+          _cgstPercent = rateProvider.cgstPercent;
+          _sgstPercent = rateProvider.sgstPercent;
           // Recalculate all items with new rates and wastage
           for (var item in _billItems) {
             item.rate = item.productType == BillProductType.gold
@@ -275,56 +290,41 @@ class _NewBillScreenState extends State<NewBillScreen> {
                       ),
                     ),
                     ElevatedButton.icon(
-                      onPressed: _addBillItem,
-                      icon: Icon(Icons.add),
+                      onPressed: _addNewBillItem,
+                      icon: const Icon(Icons.add),
                       label: Text('Add Item'),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFFFFD700),
+                        foregroundColor: Colors.white,
                       ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 12),
 
-                // Bill Items List
-                if (_billItems.isEmpty)
-                  _buildEmptyItemsWidget()
-                else
-                  ..._billItems.asMap().entries.map((entry) {
-                    int index = entry.key;
-                    BillItem item = entry.value;
-                    return _buildBillItemCard(item, index);
-                  }),
+                // Bill Items
+                for (int i = 0; i < _billItems.length; i++)
+                  _buildBillItemCard(_billItems[i], i),
 
                 const SizedBox(height: 20),
 
-                // Total Section
-                _buildTotalCard(),
-
-                const SizedBox(height: 20),
-
-                // Generate Bill Button
-                SizedBox(
-                  width: double.infinity,
-                  height: 50,
-                  child: ElevatedButton(
-                    onPressed: _generateBill,
+                // Add Item Button (at bottom as well)
+                Center(
+                  child: ElevatedButton.icon(
+                    onPressed: _addNewBillItem,
+                    icon: const Icon(Icons.add),
+                    label: Text('Add Another Item'),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: Text(
-                      'Generate Bill',
-                      style: GoogleFonts.lato(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
+                      backgroundColor: const Color(0xFFFFD700),
+                      foregroundColor: Colors.white,
                     ),
                   ),
                 ),
+
+                const SizedBox(height: 20),
+
+                // Total Card
+                _buildTotalCard(),
               ],
             ),
           ),
@@ -349,7 +349,7 @@ class _NewBillScreenState extends State<NewBillScreen> {
                 fontWeight: FontWeight.bold,
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             TextField(
               controller: _customerNameController,
               decoration: InputDecoration(
@@ -357,7 +357,6 @@ class _NewBillScreenState extends State<NewBillScreen> {
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
                 ),
-                prefixIcon: Icon(Icons.person),
               ),
             ),
             const SizedBox(height: 12),
@@ -369,34 +368,7 @@ class _NewBillScreenState extends State<NewBillScreen> {
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
                 ),
-                prefixIcon: Icon(Icons.phone),
               ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildEmptyItemsWidget() {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          children: [
-            Icon(Icons.inventory_outlined, size: 60, color: Colors.grey[400]),
-            const SizedBox(height: 16),
-            Text(
-              'No items added yet',
-              style: GoogleFonts.lato(fontSize: 16, color: Colors.grey[600]),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Tap "Add Item" to start adding jewelry items',
-              style: GoogleFonts.lato(fontSize: 14, color: Colors.grey[500]),
-              textAlign: TextAlign.center,
             ),
           ],
         ),
@@ -472,6 +444,9 @@ class _NewBillScreenState extends State<NewBillScreen> {
                         item.rate = value == BillProductType.gold
                             ? _goldRate
                             : _silverRate;
+                        item.wastagePercent = value == BillProductType.gold
+                            ? _goldWastage
+                            : _silverWastage;
                         item.calculateTotal();
                         _calculateTotal();
                       });
@@ -597,6 +572,78 @@ class _NewBillScreenState extends State<NewBillScreen> {
         ),
         child: Column(
           children: [
+            Text(
+              'Bill Summary',
+              style: GoogleFonts.playfairDisplay(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Subtotal:',
+                  style: GoogleFonts.lato(
+                    fontSize: 16,
+                    color: Colors.white.withOpacity(0.9),
+                  ),
+                ),
+                Text(
+                  '₹${NumberFormat('#,##,###.00').format(_subtotal)}',
+                  style: GoogleFonts.lato(
+                    fontSize: 16,
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'CGST (${_cgstPercent.toStringAsFixed(1)}%):',
+                  style: GoogleFonts.lato(
+                    fontSize: 16,
+                    color: Colors.white.withOpacity(0.9),
+                  ),
+                ),
+                Text(
+                  '₹${NumberFormat('#,##,###.00').format(_cgstAmount)}',
+                  style: GoogleFonts.lato(
+                    fontSize: 16,
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'SGST (${_sgstPercent.toStringAsFixed(1)}%):',
+                  style: GoogleFonts.lato(
+                    fontSize: 16,
+                    color: Colors.white.withOpacity(0.9),
+                  ),
+                ),
+                Text(
+                  '₹${NumberFormat('#,##,###.00').format(_sgstAmount)}',
+                  style: GoogleFonts.lato(
+                    fontSize: 16,
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            const Divider(color: Colors.white, height: 32),
             Text(
               'Total Amount',
               style: GoogleFonts.lato(

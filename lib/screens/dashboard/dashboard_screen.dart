@@ -18,16 +18,6 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   final DataExportService _exportService = DataExportService();
-  final Map<String, dynamic> _dashboardData = {
-    'todaySales': 45000.0,
-    'todayInvoiceCount': 12,
-    'monthSales': 780000.0,
-    'monthInvoiceCount': 156,
-    'customerCount': 245,
-    'productCount': 89,
-    'pendingInvoiceCount': 8,
-    'pendingInvoiceAmount': 125000.0,
-  };
 
   @override
   void initState() {
@@ -276,20 +266,268 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
+  void _showCgstEditDialog() {
+    final rateProvider = Provider.of<RateProvider>(context, listen: false);
+    final currentCgst = rateProvider.cgstPercent;
+    final TextEditingController tempController = TextEditingController(
+      text: currentCgst.toStringAsFixed(1),
+    );
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(
+            'Edit CGST Percentage',
+            style: GoogleFonts.playfairDisplay(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: tempController,
+                keyboardType: TextInputType.numberWithOptions(decimal: true),
+                decoration: InputDecoration(
+                  labelText: 'CGST Percentage',
+                  border: const OutlineInputBorder(),
+                  suffixText: '%',
+                  helperText: 'Enter CGST percentage (e.g., 1.5 for 1.5%)',
+                ),
+                style: GoogleFonts.lato(fontSize: 16),
+              ),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.blue.shade200),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.info_outline,
+                      color: Colors.blue,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'CGST (Central Goods and Services Tax) is levied on intra-state sales',
+                        style: GoogleFonts.lato(
+                          fontSize: 12,
+                          color: Colors.blue.shade700,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: Text(
+                'Cancel',
+                style: GoogleFonts.lato(color: Colors.grey[600]),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                if (tempController.text.isNotEmpty) {
+                  final newCgst = double.tryParse(tempController.text);
+                  if (newCgst != null && newCgst >= 0 && newCgst <= 100) {
+                    bool success = await rateProvider.updateCgstPercent(newCgst);
+
+                    if (success) {
+                      Navigator.of(context).pop();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('CGST percentage updated successfully'),
+                          backgroundColor: Colors.green,
+                        ),
+                      );
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Failed to update CGST percentage'),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                    }
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Please enter a valid percentage (0-100)'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue,
+              ),
+              child: Text(
+                'Save',
+                style: GoogleFonts.lato(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showSgstEditDialog() {
+    final rateProvider = Provider.of<RateProvider>(context, listen: false);
+    final currentSgst = rateProvider.sgstPercent;
+    final TextEditingController tempController = TextEditingController(
+      text: currentSgst.toStringAsFixed(1),
+    );
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(
+            'Edit SGST Percentage',
+            style: GoogleFonts.playfairDisplay(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: tempController,
+                keyboardType: TextInputType.numberWithOptions(decimal: true),
+                decoration: InputDecoration(
+                  labelText: 'SGST Percentage',
+                  border: const OutlineInputBorder(),
+                  suffixText: '%',
+                  helperText: 'Enter SGST percentage (e.g., 1.5 for 1.5%)',
+                ),
+                style: GoogleFonts.lato(fontSize: 16),
+              ),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.green.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.green.shade200),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.info_outline,
+                      color: Colors.green,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'SGST (State Goods and Services Tax) is levied on intra-state sales',
+                        style: GoogleFonts.lato(
+                          fontSize: 12,
+                          color: Colors.green.shade700,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: Text(
+                'Cancel',
+                style: GoogleFonts.lato(color: Colors.grey[600]),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                if (tempController.text.isNotEmpty) {
+                  final newSgst = double.tryParse(tempController.text);
+                  if (newSgst != null && newSgst >= 0 && newSgst <= 100) {
+                    bool success = await rateProvider.updateSgstPercent(newSgst);
+
+                    if (success) {
+                      Navigator.of(context).pop();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('SGST percentage updated successfully'),
+                          backgroundColor: Colors.green,
+                        ),
+                      );
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Failed to update SGST percentage'),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                    }
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Please enter a valid percentage (0-100)'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green,
+              ),
+              child: Text(
+                'Save',
+                style: GoogleFonts.lato(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          'Dashboard',
-          style: GoogleFonts.playfairDisplay(fontWeight: FontWeight.bold),
+        title: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 200),
+          child: Text(
+            'Dashboard',
+            style: GoogleFonts.playfairDisplay(fontWeight: FontWeight.bold),
+            overflow: TextOverflow.ellipsis,
+          ),
         ),
         backgroundColor: const Color(0xFFFFD700),
         foregroundColor: Colors.white,
         elevation: 0,
         actions: [
           IconButton(
-            icon: Icon(Icons.history),
+            icon: const Icon(Icons.history),
             onPressed: () {
               Navigator.of(context).push(
                 MaterialPageRoute(
@@ -300,7 +538,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             tooltip: 'Bills History',
           ),
           IconButton(
-            icon: Icon(Icons.download),
+            icon: const Icon(Icons.download),
             onPressed: _showQuickExportDialog,
             tooltip: 'Export Data',
           ),
@@ -606,12 +844,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                     child: Row(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
-                                        Text(
-                                          rateProvider.getFormattedGoldRate(),
-                                          style: GoogleFonts.lato(
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.bold,
-                                            color: const Color(0xFFFFD700),
+                                        Flexible(
+                                          child: Text(
+                                            rateProvider.getFormattedGoldRate(),
+                                            style: GoogleFonts.lato(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.bold,
+                                              color: const Color(0xFFFFD700),
+                                            ),
                                           ),
                                         ),
                                         const SizedBox(width: 4),
@@ -673,12 +913,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                     child: Row(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
-                                        Text(
-                                          rateProvider.getFormattedSilverRate(),
-                                          style: GoogleFonts.lato(
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.grey.shade700,
+                                        Flexible(
+                                          child: Text(
+                                            rateProvider.getFormattedSilverRate(),
+                                            style: GoogleFonts.lato(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.grey.shade700,
+                                            ),
                                           ),
                                         ),
                                         const SizedBox(width: 4),
@@ -745,13 +987,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                     child: Row(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
-                                        Text(
-                                          rateProvider
-                                              .getFormattedGoldWastage(),
-                                          style: GoogleFonts.lato(
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.orange,
+                                        Flexible(
+                                          child: Text(
+                                            rateProvider.getFormattedGoldWastage(),
+                                            style: GoogleFonts.lato(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.orange,
+                                            ),
                                           ),
                                         ),
                                         const SizedBox(width: 4),
@@ -813,13 +1056,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                     child: Row(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
-                                        Text(
-                                          rateProvider
-                                              .getFormattedSilverWastage(),
-                                          style: GoogleFonts.lato(
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.blue,
+                                        Flexible(
+                                          child: Text(
+                                            rateProvider.getFormattedSilverWastage(),
+                                            style: GoogleFonts.lato(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.blue,
+                                            ),
                                           ),
                                         ),
                                         const SizedBox(width: 4),
@@ -827,6 +1071,149 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                           Icons.edit,
                                           size: 16,
                                           color: Colors.blue,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    // CGST and SGST Row
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.blue.shade50,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: Colors.blue.shade200),
+                            ),
+                            child: Column(
+                              children: [
+                                const Icon(
+                                  Icons.account_balance,
+                                  color: Colors.blue,
+                                  size: 24,
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'CGST',
+                                  style: GoogleFonts.lato(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                GestureDetector(
+                                  onTap: () {
+                                    _showCgstEditDialog();
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 8,
+                                      horizontal: 12,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(6),
+                                      border: Border.all(
+                                        color: Colors.blue,
+                                        width: 1.5,
+                                      ),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Flexible(
+                                          child: Text(
+                                            rateProvider.getFormattedCgstPercent(),
+                                            style: GoogleFonts.lato(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.blue,
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 4),
+                                        const Icon(
+                                          Icons.edit,
+                                          size: 16,
+                                          color: Colors.blue,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.green.shade50,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: Colors.green.shade200),
+                            ),
+                            child: Column(
+                              children: [
+                                const Icon(
+                                  Icons.account_balance,
+                                  color: Colors.green,
+                                  size: 24,
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'SGST',
+                                  style: GoogleFonts.lato(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                GestureDetector(
+                                  onTap: () {
+                                    _showSgstEditDialog();
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 8,
+                                      horizontal: 12,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(6),
+                                      border: Border.all(
+                                        color: Colors.green,
+                                        width: 1.5,
+                                      ),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Flexible(
+                                          child: Text(
+                                            rateProvider.getFormattedSgstPercent(),
+                                            style: GoogleFonts.lato(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.green,
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 4),
+                                        const Icon(
+                                          Icons.edit,
+                                          size: 16,
+                                          color: Colors.green,
                                         ),
                                       ],
                                     ),
@@ -987,7 +1374,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           title: Row(
             children: [
               Icon(Icons.download, color: Colors.purple),
-              SizedBox(width: 8),
+              const SizedBox(width: 8),
               Text('Quick Export'),
             ],
           ),
@@ -995,7 +1382,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text('Export all bills data in your preferred format:'),
-              SizedBox(height: 16),
+              const SizedBox(height: 16),
               _buildQuickExportOption(
                 icon: Icons.table_chart,
                 title: 'Export to CSV',
@@ -1028,12 +1415,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
     required VoidCallback onTap,
   }) {
     return Card(
-      margin: EdgeInsets.only(bottom: 8),
+      margin: const EdgeInsets.only(bottom: 8),
       child: ListTile(
         leading: Icon(icon, color: Colors.purple),
         title: Text(title, style: GoogleFonts.lato(fontSize: 14)),
         subtitle: Text(subtitle, style: GoogleFonts.lato(fontSize: 12)),
-        trailing: Icon(Icons.arrow_forward_ios, size: 16),
+        trailing: const Icon(Icons.arrow_forward_ios, size: 16),
         onTap: onTap,
         dense: true,
       ),
@@ -1050,8 +1437,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
       builder: (context) => AlertDialog(
         content: Row(
           children: [
-            CircularProgressIndicator(),
-            SizedBox(width: 16),
+            const CircularProgressIndicator(),
+            const SizedBox(width: 16),
             Text('Exporting data...'),
           ],
         ),
@@ -1083,8 +1470,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
         builder: (context) => AlertDialog(
           title: Row(
             children: [
-              Icon(Icons.check_circle, color: Colors.green),
-              SizedBox(width: 8),
+              const Icon(Icons.check_circle, color: Colors.green),
+              const SizedBox(width: 8),
               Text('Export Successful'),
             ],
           ),
@@ -1093,7 +1480,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text('All bills exported successfully!'),
-              SizedBox(height: 8),
+              const SizedBox(height: 8),
               Text('Format: ${format.toUpperCase()}'),
               Text('Location: ${filePath.split('/').last}'),
             ],

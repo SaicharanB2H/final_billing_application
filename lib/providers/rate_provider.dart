@@ -9,6 +9,8 @@ class RateProvider extends ChangeNotifier {
   double _silverRate = 75.0; // Default fallback
   double _goldWastage = 8.0; // Default gold wastage %
   double _silverWastage = 5.0; // Default silver wastage %
+  double _cgstPercent = 1.5; // Default CGST %
+  double _sgstPercent = 1.5; // Default SGST %
   bool _isLoading = false;
   String? _error;
 
@@ -16,6 +18,8 @@ class RateProvider extends ChangeNotifier {
   double get silverRate => _silverRate;
   double get goldWastage => _goldWastage;
   double get silverWastage => _silverWastage;
+  double get cgstPercent => _cgstPercent;
+  double get sgstPercent => _sgstPercent;
   bool get isLoading => _isLoading;
   String? get error => _error;
 
@@ -31,6 +35,8 @@ class RateProvider extends ChangeNotifier {
         _silverRate = shopSettings.silverRate;
         _goldWastage = shopSettings.defaultWastageGold;
         _silverWastage = shopSettings.defaultWastageSilver;
+        _cgstPercent = shopSettings.cgstPercent;
+        _sgstPercent = shopSettings.sgstPercent;
       }
       notifyListeners();
     } catch (e) {
@@ -67,6 +73,8 @@ class RateProvider extends ChangeNotifier {
           silverRate: _silverRate,
           defaultTaxPercent: 3.0,
           ratesUpdatedAt: DateTime.now(),
+          cgstPercent: _cgstPercent,
+          sgstPercent: _sgstPercent,
         );
         await _databaseHelper.updateShopSettings(newSettings);
 
@@ -109,6 +117,8 @@ class RateProvider extends ChangeNotifier {
           silverRate: newRate,
           defaultTaxPercent: 3.0,
           ratesUpdatedAt: DateTime.now(),
+          cgstPercent: _cgstPercent,
+          sgstPercent: _sgstPercent,
         );
         await _databaseHelper.updateShopSettings(newSettings);
 
@@ -148,6 +158,8 @@ class RateProvider extends ChangeNotifier {
           silverRate: silverRate,
           defaultTaxPercent: 3.0,
           ratesUpdatedAt: DateTime.now(),
+          cgstPercent: _cgstPercent,
+          sgstPercent: _sgstPercent,
         );
         await _databaseHelper.updateShopSettings(newSettings);
       }
@@ -193,6 +205,8 @@ class RateProvider extends ChangeNotifier {
           defaultWastageSilver: _silverWastage,
           defaultTaxPercent: 3.0,
           ratesUpdatedAt: DateTime.now(),
+          cgstPercent: _cgstPercent,
+          sgstPercent: _sgstPercent,
         );
         await _databaseHelper.updateShopSettings(newSettings);
 
@@ -237,6 +251,8 @@ class RateProvider extends ChangeNotifier {
           defaultWastageSilver: newWastage,
           defaultTaxPercent: 3.0,
           ratesUpdatedAt: DateTime.now(),
+          cgstPercent: _cgstPercent,
+          sgstPercent: _sgstPercent,
         );
         await _databaseHelper.updateShopSettings(newSettings);
 
@@ -246,6 +262,98 @@ class RateProvider extends ChangeNotifier {
       }
     } catch (e) {
       _setError('Failed to update silver wastage: $e');
+      return false;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  // Update CGST percentage
+  Future<bool> updateCgstPercent(double newCgst) async {
+    _setLoading(true);
+    _setError(null);
+
+    try {
+      final shopSettings = await _databaseHelper.getShopSettings();
+      if (shopSettings != null) {
+        final updatedSettings = shopSettings.copyWith(
+          cgstPercent: newCgst,
+          ratesUpdatedAt: DateTime.now(),
+        );
+        await _databaseHelper.updateShopSettings(updatedSettings);
+
+        _cgstPercent = newCgst;
+        notifyListeners();
+        return true;
+      } else {
+        // Create new shop settings if none exist
+        final newSettings = ShopSettings(
+          shopName: 'Jewelry Shop',
+          address: '123 Main Street, City, State 12345',
+          phone: '+1234567890',
+          goldRate: _goldRate,
+          silverRate: _silverRate,
+          defaultWastageGold: _goldWastage,
+          defaultWastageSilver: _silverWastage,
+          defaultTaxPercent: 3.0,
+          ratesUpdatedAt: DateTime.now(),
+          cgstPercent: newCgst,
+          sgstPercent: _sgstPercent,
+        );
+        await _databaseHelper.updateShopSettings(newSettings);
+
+        _cgstPercent = newCgst;
+        notifyListeners();
+        return true;
+      }
+    } catch (e) {
+      _setError('Failed to update CGST percentage: $e');
+      return false;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  // Update SGST percentage
+  Future<bool> updateSgstPercent(double newSgst) async {
+    _setLoading(true);
+    _setError(null);
+
+    try {
+      final shopSettings = await _databaseHelper.getShopSettings();
+      if (shopSettings != null) {
+        final updatedSettings = shopSettings.copyWith(
+          sgstPercent: newSgst,
+          ratesUpdatedAt: DateTime.now(),
+        );
+        await _databaseHelper.updateShopSettings(updatedSettings);
+
+        _sgstPercent = newSgst;
+        notifyListeners();
+        return true;
+      } else {
+        // Create new shop settings if none exist
+        final newSettings = ShopSettings(
+          shopName: 'Jewelry Shop',
+          address: '123 Main Street, City, State 12345',
+          phone: '+1234567890',
+          goldRate: _goldRate,
+          silverRate: _silverRate,
+          defaultWastageGold: _goldWastage,
+          defaultWastageSilver: _silverWastage,
+          defaultTaxPercent: 3.0,
+          ratesUpdatedAt: DateTime.now(),
+          cgstPercent: _cgstPercent,
+          sgstPercent: newSgst,
+        );
+        await _databaseHelper.updateShopSettings(newSettings);
+
+        _sgstPercent = newSgst;
+        notifyListeners();
+        return true;
+      }
+    } catch (e) {
+      _setError('Failed to update SGST percentage: $e');
       return false;
     } finally {
       _setLoading(false);
@@ -268,6 +376,15 @@ class RateProvider extends ChangeNotifier {
 
   String getFormattedSilverWastage() {
     return '${_silverWastage.toStringAsFixed(1)}%';
+  }
+
+  // Get formatted CGST/SGST display
+  String getFormattedCgstPercent() {
+    return '${_cgstPercent.toStringAsFixed(1)}%';
+  }
+
+  String getFormattedSgstPercent() {
+    return '${_sgstPercent.toStringAsFixed(1)}%';
   }
 
   // Clear error

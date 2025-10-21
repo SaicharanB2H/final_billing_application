@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 class ShopSettings {
   final int? id;
   final String shopName;
@@ -17,6 +19,9 @@ class ShopSettings {
   final String currencySymbol;
   final DateTime ratesUpdatedAt;
   final DateTime? updatedAt;
+  // New fields for CGST and SGST
+  final double cgstPercent;
+  final double sgstPercent;
 
   ShopSettings({
     this.id,
@@ -37,6 +42,8 @@ class ShopSettings {
     this.currencySymbol = '₹',
     required this.ratesUpdatedAt,
     this.updatedAt,
+    this.cgstPercent = 1.5, // Default CGST 1.5%
+    this.sgstPercent = 1.5, // Default SGST 1.5%
   });
 
   Map<String, dynamic> toMap() {
@@ -59,6 +66,8 @@ class ShopSettings {
       'currency_symbol': currencySymbol,
       'rates_updated_at': ratesUpdatedAt.toIso8601String(),
       'updated_at': updatedAt?.toIso8601String(),
+      'cgst_percent': cgstPercent,
+      'sgst_percent': sgstPercent,
     };
   }
 
@@ -84,6 +93,8 @@ class ShopSettings {
       updatedAt: map['updated_at'] != null
           ? DateTime.parse(map['updated_at'])
           : null,
+      cgstPercent: map['cgst_percent']?.toDouble() ?? 1.5,
+      sgstPercent: map['sgst_percent']?.toDouble() ?? 1.5,
     );
   }
 
@@ -106,6 +117,8 @@ class ShopSettings {
     String? currencySymbol,
     DateTime? ratesUpdatedAt,
     DateTime? updatedAt,
+    double? cgstPercent,
+    double? sgstPercent,
   }) {
     return ShopSettings(
       id: id ?? this.id,
@@ -128,6 +141,8 @@ class ShopSettings {
       currencySymbol: currencySymbol ?? this.currencySymbol,
       ratesUpdatedAt: ratesUpdatedAt ?? this.ratesUpdatedAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      cgstPercent: cgstPercent ?? this.cgstPercent,
+      sgstPercent: sgstPercent ?? this.sgstPercent,
     );
   }
 }

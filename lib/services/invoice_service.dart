@@ -1,35 +1,19 @@
-import '../database/database_helper.dart';
+import 'package:flutter/foundation.dart';
 import '../models/invoice.dart';
 import '../models/customer.dart';
+import '../database/database_helper.dart';
 import '../models/product.dart';
+import '../providers/rate_provider.dart';
 
 class InvoiceService {
   final DatabaseHelper _dbHelper = DatabaseHelper();
-
-  // Create a new invoice
-  Future<int> createInvoice(Invoice invoice) async {
-    try {
-      return await _dbHelper.insertInvoice(invoice);
-    } catch (e) {
-      throw Exception('Failed to create invoice: $e');
-    }
-  }
 
   // Get all invoices
   Future<List<Invoice>> getAllInvoices() async {
     try {
       return await _dbHelper.getAllInvoices();
     } catch (e) {
-      throw Exception('Failed to get invoices: $e');
-    }
-  }
-
-  // Get invoice by ID
-  Future<Invoice?> getInvoiceById(int id) async {
-    try {
-      return await _dbHelper.getInvoiceById(id);
-    } catch (e) {
-      throw Exception('Failed to get invoice: $e');
+      throw Exception('Failed to get all invoices: $e');
     }
   }
 
@@ -38,7 +22,7 @@ class InvoiceService {
     try {
       return await _dbHelper.getInvoicesByCustomer(customerId);
     } catch (e) {
-      throw Exception('Failed to get customer invoices: $e');
+      throw Exception('Failed to get invoices by customer: $e');
     }
   }
 
@@ -63,6 +47,15 @@ class InvoiceService {
     }
   }
 
+  // Create invoice
+  Future<int> createInvoice(Invoice invoice) async {
+    try {
+      return await _dbHelper.insertInvoice(invoice);
+    } catch (e) {
+      throw Exception('Failed to create invoice: $e');
+    }
+  }
+
   // Generate unique invoice number
   Future<String> generateInvoiceNumber() async {
     try {
@@ -82,6 +75,8 @@ class InvoiceService {
     required int userId,
     double taxPercent = 3.0,
     String? notes,
+    double cgstPercent = 1.5,
+    double sgstPercent = 1.5,
   }) async {
     try {
       // Create or get customer
@@ -131,8 +126,13 @@ class InvoiceService {
         subtotal += itemTotal;
       }
 
-      // Calculate total without tax
-      double totalAmount = subtotal;
+      // Calculate CGST and SGST
+      double cgstAmount = subtotal * (cgstPercent / 100);
+      double sgstAmount = subtotal * (sgstPercent / 100);
+      double taxAmount = cgstAmount + sgstAmount;
+      
+      // Calculate total with taxes
+      double totalAmount = subtotal + taxAmount;
 
       // Create invoice
       Invoice invoice = Invoice(
@@ -142,8 +142,8 @@ class InvoiceService {
         invoiceDate: DateTime.now(),
         items: invoiceItems,
         subtotal: subtotal,
-        taxPercent: 0.0, // Set to 0 but keep for database compatibility
-        taxAmount: 0.0, // Set to 0 but keep for database compatibility
+        taxPercent: taxAmount, // Using this field to store total tax for database compatibility
+        taxAmount: taxAmount,
         totalAmount: totalAmount,
         createdAt: DateTime.now(),
         notes: notes,
