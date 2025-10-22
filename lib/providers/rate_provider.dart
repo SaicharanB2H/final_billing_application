@@ -66,9 +66,9 @@ class RateProvider extends ChangeNotifier {
       } else {
         // Create new shop settings if none exist
         final newSettings = ShopSettings(
-          shopName: 'Jewelry Shop',
+          shopName: 'Kamakshi Jewellers',
           address: '123 Main Street, City, State 12345',
-          phone: '+1234567890',
+          phone: '9014296309',
           goldRate: newRate,
           silverRate: _silverRate,
           defaultTaxPercent: 3.0,
@@ -110,9 +110,9 @@ class RateProvider extends ChangeNotifier {
       } else {
         // Create new shop settings if none exist
         final newSettings = ShopSettings(
-          shopName: 'Jewelry Shop',
+          shopName: 'Kamakshi Jewellers',
           address: '123 Main Street, City, State 12345',
-          phone: '+1234567890',
+          phone: '9014296309',
           goldRate: _goldRate,
           silverRate: newRate,
           defaultTaxPercent: 3.0,
@@ -151,9 +151,9 @@ class RateProvider extends ChangeNotifier {
       } else {
         // Create new shop settings if none exist
         final newSettings = ShopSettings(
-          shopName: 'Jewelry Shop',
+          shopName: 'Kamakshi Jewellers',
           address: '123 Main Street, City, State 12345',
-          phone: '+1234567890',
+          phone: '9014296309',
           goldRate: goldRate,
           silverRate: silverRate,
           defaultTaxPercent: 3.0,
@@ -196,9 +196,9 @@ class RateProvider extends ChangeNotifier {
       } else {
         // Create new shop settings if none exist
         final newSettings = ShopSettings(
-          shopName: 'Jewelry Shop',
+          shopName: 'Kamakshi Jewellers',
           address: '123 Main Street, City, State 12345',
-          phone: '+1234567890',
+          phone: '9014296309',
           goldRate: _goldRate,
           silverRate: _silverRate,
           defaultWastageGold: newWastage,
@@ -242,9 +242,9 @@ class RateProvider extends ChangeNotifier {
       } else {
         // Create new shop settings if none exist
         final newSettings = ShopSettings(
-          shopName: 'Jewelry Shop',
+          shopName: 'Kamakshi Jewellers',
           address: '123 Main Street, City, State 12345',
-          phone: '+1234567890',
+          phone: '9014296309',
           goldRate: _goldRate,
           silverRate: _silverRate,
           defaultWastageGold: _goldWastage,
@@ -288,9 +288,9 @@ class RateProvider extends ChangeNotifier {
       } else {
         // Create new shop settings if none exist
         final newSettings = ShopSettings(
-          shopName: 'Jewelry Shop',
+          shopName: 'Kamakshi Jewellers',
           address: '123 Main Street, City, State 12345',
-          phone: '+1234567890',
+          phone: '9014296309',
           goldRate: _goldRate,
           silverRate: _silverRate,
           defaultWastageGold: _goldWastage,
@@ -334,9 +334,9 @@ class RateProvider extends ChangeNotifier {
       } else {
         // Create new shop settings if none exist
         final newSettings = ShopSettings(
-          shopName: 'Jewelry Shop',
+          shopName: 'Kamakshi Jewellers',
           address: '123 Main Street, City, State 12345',
-          phone: '+1234567890',
+          phone: '9014296309',
           goldRate: _goldRate,
           silverRate: _silverRate,
           defaultWastageGold: _goldWastage,

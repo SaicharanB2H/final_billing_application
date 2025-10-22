@@ -22,8 +22,8 @@ class DatabaseHelper {
   Future<Database> _initDatabase() async {
     String path = join(await getDatabasesPath(), 'jewelry_shop.db');
     return await openDatabase(
-      path, 
-      version: 2, // Updated version to 2
+      path,
+      version: 3, // Updated version to 3 for shop settings update
       onCreate: _onCreate,
       onUpgrade: _onUpgrade, // Added onUpgrade callback
     );
@@ -176,10 +176,10 @@ class DatabaseHelper {
 
     // Insert default shop settings
     await db.insert('shop_settings', {
-      'shop_name': 'Jewelry Shop',
+      'shop_name': 'Kamakshi Jewellers',
       'address': '123 Main Street, City, State 12345',
-      'phone': '+1234567890',
-      'email': 'info@jewelryshop.com',
+      'phone': '9014296309',
+      'email': 'info@kamakshijewellers.com',
       'gold_rate': 5500.0, // Sample rate
       'silver_rate': 75.0, // Sample rate
       'default_tax_percent': 3.0,
@@ -199,11 +199,29 @@ class DatabaseHelper {
     if (oldVersion < 2) {
       // Add CGST and SGST columns to shop_settings table
       try {
-        await db.execute('ALTER TABLE shop_settings ADD COLUMN cgst_percent REAL NOT NULL DEFAULT 1.5');
-        await db.execute('ALTER TABLE shop_settings ADD COLUMN sgst_percent REAL NOT NULL DEFAULT 1.5');
+        await db.execute(
+          'ALTER TABLE shop_settings ADD COLUMN cgst_percent REAL NOT NULL DEFAULT 1.5',
+        );
+        await db.execute(
+          'ALTER TABLE shop_settings ADD COLUMN sgst_percent REAL NOT NULL DEFAULT 1.5',
+        );
       } catch (e) {
         // If columns already exist, update existing records
-        await db.rawUpdate('UPDATE shop_settings SET cgst_percent = 1.5, sgst_percent = 1.5');
+        await db.rawUpdate(
+          'UPDATE shop_settings SET cgst_percent = 1.5, sgst_percent = 1.5',
+        );
+      }
+    }
+
+    if (oldVersion < 3) {
+      // Update shop name and phone to Kamakshi Jewellers
+      try {
+        await db.rawUpdate(
+          'UPDATE shop_settings SET shop_name = ?, phone = ?, email = ? WHERE id = 1',
+          ['Kamakshi Jewellers', '9014296309', 'info@kamakshijewellers.com'],
+        );
+      } catch (e) {
+        print('Error updating shop settings: $e');
       }
     }
   }

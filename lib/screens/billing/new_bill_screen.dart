@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../models/product.dart';
 import '../../providers/invoice_provider.dart';
 import '../../providers/rate_provider.dart';
+import '../../providers/dashboard_provider.dart';
 import '../../services/invoice_service.dart';
 
 class NewBillScreen extends StatefulWidget {
@@ -79,12 +80,12 @@ class _NewBillScreenState extends State<NewBillScreen> {
     for (var item in _billItems) {
       subtotal += item.totalAmount;
     }
-    
+
     // Calculate CGST and SGST
     double cgstAmount = subtotal * (_cgstPercent / 100);
     double sgstAmount = subtotal * (_sgstPercent / 100);
     double totalAmount = subtotal + cgstAmount + sgstAmount;
-    
+
     setState(() {
       _subtotal = subtotal;
       _cgstAmount = cgstAmount;
@@ -190,8 +191,13 @@ class _NewBillScreenState extends State<NewBillScreen> {
               ),
               actions: [
                 TextButton(
-                  onPressed: () {
+                  onPressed: () async {
                     Navigator.pop(context);
+                    // Refresh dashboard data before going back
+                    await Provider.of<DashboardProvider>(
+                      context,
+                      listen: false,
+                    ).refresh();
                     Navigator.pop(context); // Go back to dashboard
                   },
                   child: Text('OK'),

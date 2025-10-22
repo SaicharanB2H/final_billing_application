@@ -5,6 +5,7 @@ import 'providers/customer_provider.dart';
 import 'providers/product_provider.dart';
 import 'providers/invoice_provider.dart';
 import 'providers/rate_provider.dart';
+import 'providers/dashboard_provider.dart';
 import 'screens/dashboard/dashboard_screen.dart';
 
 void main() {
@@ -22,6 +23,7 @@ class JewelryShopApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => ProductProvider()),
         ChangeNotifierProvider(create: (_) => InvoiceProvider()),
         ChangeNotifierProvider(create: (_) => RateProvider()),
+        ChangeNotifierProvider(create: (_) => DashboardProvider()),
       ],
       child: MaterialApp(
         title: 'Jewelry Shop Billing',

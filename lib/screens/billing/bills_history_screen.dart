@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../models/invoice.dart';
 import '../../models/customer.dart';
 import '../../providers/invoice_provider.dart';
+import '../../providers/dashboard_provider.dart';
 import '../../database/database_helper.dart';
 import '../../services/data_export_service.dart';
 
@@ -869,6 +870,11 @@ class _BillsHistoryScreenState extends State<BillsHistoryScreen> {
                               if (success) {
                                 _showSnackBar('Payment status updated to PAID');
                                 _loadInvoices();
+                                // Refresh dashboard data
+                                Provider.of<DashboardProvider>(
+                                  context,
+                                  listen: false,
+                                ).refresh();
                               } else {
                                 _showSnackBar(
                                   'Failed to update payment status',

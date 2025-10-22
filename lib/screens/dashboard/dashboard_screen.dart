@@ -8,6 +8,7 @@ import '../customers/add_edit_customer_screen.dart';
 import '../../services/data_export_service.dart';
 import '../../widgets/main_drawer.dart';
 import '../../providers/rate_provider.dart';
+import '../../providers/dashboard_provider.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -22,9 +23,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   void initState() {
     super.initState();
-    // Load rates when dashboard initializes
+    // Load rates and dashboard data when dashboard initializes
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Provider.of<RateProvider>(context, listen: false).loadRates();
+      Provider.of<DashboardProvider>(
+        context,
+        listen: false,
+      ).loadDashboardData();
     });
   }
 
@@ -343,7 +348,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 if (tempController.text.isNotEmpty) {
                   final newCgst = double.tryParse(tempController.text);
                   if (newCgst != null && newCgst >= 0 && newCgst <= 100) {
-                    bool success = await rateProvider.updateCgstPercent(newCgst);
+                    bool success = await rateProvider.updateCgstPercent(
+                      newCgst,
+                    );
 
                     if (success) {
                       Navigator.of(context).pop();
@@ -364,16 +371,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   } else {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text('Please enter a valid percentage (0-100)'),
+                        content: Text(
+                          'Please enter a valid percentage (0-100)',
+                        ),
                         backgroundColor: Colors.red,
                       ),
                     );
                   }
                 }
               },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue,
-              ),
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
               child: Text(
                 'Save',
                 style: GoogleFonts.lato(
@@ -465,7 +472,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 if (tempController.text.isNotEmpty) {
                   final newSgst = double.tryParse(tempController.text);
                   if (newSgst != null && newSgst >= 0 && newSgst <= 100) {
-                    bool success = await rateProvider.updateSgstPercent(newSgst);
+                    bool success = await rateProvider.updateSgstPercent(
+                      newSgst,
+                    );
 
                     if (success) {
                       Navigator.of(context).pop();
@@ -486,16 +495,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   } else {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text('Please enter a valid percentage (0-100)'),
+                        content: Text(
+                          'Please enter a valid percentage (0-100)',
+                        ),
                         backgroundColor: Colors.red,
                       ),
                     );
                   }
                 }
               },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green,
-              ),
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
               child: Text(
                 'Save',
                 style: GoogleFonts.lato(
@@ -526,6 +535,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
         foregroundColor: Colors.white,
         elevation: 0,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: () async {
+              await Provider.of<DashboardProvider>(
+                context,
+                listen: false,
+              ).refresh();
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Dashboard data refreshed'),
+                  duration: Duration(seconds: 1),
+                  backgroundColor: Colors.green,
+                ),
+              );
+            },
+            tooltip: 'Refresh Data',
+          ),
           IconButton(
             icon: const Icon(Icons.history),
             onPressed: () {
@@ -568,28 +594,41 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
             const SizedBox(height: 12),
 
-            Row(
-              children: [
-                Expanded(
-                  child: _buildSalesCard(
-                    'Today\'s Sales',
-                    45000.0,
-                    12,
-                    Icons.today,
-                    Colors.green,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _buildSalesCard(
-                    'This Month',
-                    780000.0,
-                    156,
-                    Icons.calendar_month,
-                    Colors.blue,
-                  ),
-                ),
-              ],
+            Consumer<DashboardProvider>(
+              builder: (context, dashboardProvider, child) {
+                if (dashboardProvider.isLoading) {
+                  return const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(20.0),
+                      child: CircularProgressIndicator(),
+                    ),
+                  );
+                }
+
+                return Row(
+                  children: [
+                    Expanded(
+                      child: _buildSalesCard(
+                        'Today\'s Sales',
+                        dashboardProvider.todaySales,
+                        dashboardProvider.todayInvoiceCount,
+                        Icons.today,
+                        Colors.green,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _buildSalesCard(
+                        'This Month',
+                        dashboardProvider.monthSales,
+                        dashboardProvider.monthInvoiceCount,
+                        Icons.calendar_month,
+                        Colors.blue,
+                      ),
+                    ),
+                  ],
+                );
+              },
             ),
             const SizedBox(height: 20),
 
@@ -603,49 +642,62 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
             const SizedBox(height: 12),
 
-            Row(
-              children: [
-                Expanded(
-                  child: _buildStatCard(
-                    'Customers',
-                    '245',
-                    Icons.people,
-                    Colors.purple,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _buildStatCard(
-                    'Products',
-                    '89',
-                    Icons.inventory,
-                    Colors.orange,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
+            Consumer<DashboardProvider>(
+              builder: (context, dashboardProvider, child) {
+                if (dashboardProvider.isLoading) {
+                  return const SizedBox.shrink();
+                }
 
-            Row(
-              children: [
-                Expanded(
-                  child: _buildStatCard(
-                    'Pending Bills',
-                    '8',
-                    Icons.pending_actions,
-                    Colors.red,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _buildStatCard(
-                    'Pending Amount',
-                    '₹1,25,000',
-                    Icons.money,
-                    Colors.amber,
-                  ),
-                ),
-              ],
+                return Column(
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildStatCard(
+                            'Customers',
+                            dashboardProvider.customerCount.toString(),
+                            Icons.people,
+                            Colors.purple,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _buildStatCard(
+                            'Products',
+                            dashboardProvider.productCount.toString(),
+                            Icons.inventory,
+                            Colors.orange,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildStatCard(
+                            'Pending Bills',
+                            dashboardProvider.pendingInvoiceCount.toString(),
+                            Icons.pending_actions,
+                            Colors.red,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _buildStatCard(
+                            'Pending Amount',
+                            dashboardProvider.formatCurrency(
+                              dashboardProvider.pendingInvoiceAmount,
+                            ),
+                            Icons.money,
+                            Colors.amber,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                );
+              },
             ),
             const SizedBox(height: 20),
 
@@ -915,7 +967,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                       children: [
                                         Flexible(
                                           child: Text(
-                                            rateProvider.getFormattedSilverRate(),
+                                            rateProvider
+                                                .getFormattedSilverRate(),
                                             style: GoogleFonts.lato(
                                               fontSize: 16,
                                               fontWeight: FontWeight.bold,
@@ -989,7 +1042,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                       children: [
                                         Flexible(
                                           child: Text(
-                                            rateProvider.getFormattedGoldWastage(),
+                                            rateProvider
+                                                .getFormattedGoldWastage(),
                                             style: GoogleFonts.lato(
                                               fontSize: 16,
                                               fontWeight: FontWeight.bold,
@@ -1058,7 +1112,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                       children: [
                                         Flexible(
                                           child: Text(
-                                            rateProvider.getFormattedSilverWastage(),
+                                            rateProvider
+                                                .getFormattedSilverWastage(),
                                             style: GoogleFonts.lato(
                                               fontSize: 16,
                                               fontWeight: FontWeight.bold,
@@ -1132,7 +1187,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                       children: [
                                         Flexible(
                                           child: Text(
-                                            rateProvider.getFormattedCgstPercent(),
+                                            rateProvider
+                                                .getFormattedCgstPercent(),
                                             style: GoogleFonts.lato(
                                               fontSize: 16,
                                               fontWeight: FontWeight.bold,
@@ -1201,7 +1257,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                       children: [
                                         Flexible(
                                           child: Text(
-                                            rateProvider.getFormattedSgstPercent(),
+                                            rateProvider
+                                                .getFormattedSgstPercent(),
                                             style: GoogleFonts.lato(
                                               fontSize: 16,
                                               fontWeight: FontWeight.bold,

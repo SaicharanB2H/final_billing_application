@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:io';
 import 'dart:typed_data';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -22,12 +23,14 @@ class PdfService {
     shopSettings ??= ShopSettings(
       shopName: 'Kamakshi Jewellers',
       address: '123 Main Street, City, State 12345',
-      phone: '+91 7680959867',
-      email: 'info@jewelryshop.com',
+      phone: '9014296309',
+      email: 'info@kamakshijewellers.com',
       goldRate: 5500.0,
       silverRate: 75.0,
       defaultTaxPercent: 3.0,
       ratesUpdatedAt: DateTime.now(),
+      cgstPercent: 1.5,
+      sgstPercent: 1.5,
     );
 
     pdf.addPage(
@@ -44,7 +47,7 @@ class PdfService {
             pw.SizedBox(height: 20),
             _buildItemsTable(invoice.items),
             pw.SizedBox(height: 20),
-            _buildTotalSection(invoice),
+            _buildTotalSection(invoice, shopSettings),
             pw.SizedBox(height: 30),
             _buildFooter(),
           ];
@@ -315,46 +318,132 @@ class PdfService {
   }
 
   // Build total section
-  pw.Widget _buildTotalSection(Invoice invoice) {
+  pw.Widget _buildTotalSection(Invoice invoice, ShopSettings shopSettings) {
+    // Calculate CGST and SGST from shop settings
+    double cgstPercent = shopSettings.cgstPercent;
+    double sgstPercent = shopSettings.sgstPercent;
+
+    // Calculate tax amounts based on subtotal
+    double cgstAmount = invoice.subtotal * (cgstPercent / 100);
+    double sgstAmount = invoice.subtotal * (sgstPercent / 100);
+
     return pw.Row(
       mainAxisAlignment: pw.MainAxisAlignment.end,
       children: [
         pw.Container(
-          width: 200,
+          width: 250,
           child: pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.end,
             children: [
               _buildTotalRow('Subtotal:', invoice.subtotal),
               if (invoice.discountAmount > 0)
                 _buildTotalRow('Discount:', -invoice.discountAmount),
-              // Tax section removed
+
+              // Tax breakdown section
+              pw.SizedBox(height: 8),
               pw.Container(
-                padding: pw.EdgeInsets.symmetric(vertical: 8),
+                padding: pw.EdgeInsets.symmetric(vertical: 6),
                 decoration: pw.BoxDecoration(
                   border: pw.Border(
-                    top: pw.BorderSide(color: PdfColors.grey400, width: 1),
+                    top: pw.BorderSide(color: PdfColors.grey300, width: 1),
+                    bottom: pw.BorderSide(color: PdfColors.grey300, width: 1),
                   ),
+                  color: PdfColors.grey50,
                 ),
-                child: pw.Row(
-                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                child: pw.Column(
                   children: [
-                    pw.Text(
-                      'Total Amount:',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                        color: PdfColors.indigo800,
+                    pw.Padding(
+                      padding: pw.EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 2,
+                      ),
+                      child: pw.Row(
+                        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                        children: [
+                          pw.Text(
+                            'CGST (${cgstPercent.toStringAsFixed(1)}%):',
+                            style: pw.TextStyle(
+                              fontSize: 11,
+                              color: PdfColors.blue800,
+                            ),
+                          ),
+                          pw.Text(
+                            'Rs.${NumberFormat('#,##,###.00').format(cgstAmount)}',
+                            style: pw.TextStyle(
+                              fontSize: 11,
+                              color: PdfColors.blue800,
+                              fontWeight: pw.FontWeight.bold,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    pw.Text(
-                      'Rs.${NumberFormat('#,##,###.00').format(invoice.totalAmount)}',
-                      style: pw.TextStyle(
-                        fontSize: 16,
-                        fontWeight: pw.FontWeight.bold,
-                        color: PdfColors.green800,
+                    pw.Padding(
+                      padding: pw.EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 2,
+                      ),
+                      child: pw.Row(
+                        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                        children: [
+                          pw.Text(
+                            'SGST (${sgstPercent.toStringAsFixed(1)}%):',
+                            style: pw.TextStyle(
+                              fontSize: 11,
+                              color: PdfColors.green800,
+                            ),
+                          ),
+                          pw.Text(
+                            'Rs.${NumberFormat('#,##,###.00').format(sgstAmount)}',
+                            style: pw.TextStyle(
+                              fontSize: 11,
+                              color: PdfColors.green800,
+                              fontWeight: pw.FontWeight.bold,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
+                ),
+              ),
+
+              pw.SizedBox(height: 8),
+              _buildTotalRow('Total Tax:', invoice.taxAmount),
+
+              // Grand total
+              pw.Container(
+                padding: pw.EdgeInsets.symmetric(vertical: 8),
+                margin: pw.EdgeInsets.only(top: 4),
+                decoration: pw.BoxDecoration(
+                  border: pw.Border(
+                    top: pw.BorderSide(color: PdfColors.grey400, width: 2),
+                  ),
+                  color: PdfColors.amber50,
+                ),
+                child: pw.Padding(
+                  padding: pw.EdgeInsets.symmetric(horizontal: 8),
+                  child: pw.Row(
+                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                    children: [
+                      pw.Text(
+                        'Total Amount:',
+                        style: pw.TextStyle(
+                          fontSize: 14,
+                          fontWeight: pw.FontWeight.bold,
+                          color: PdfColors.indigo800,
+                        ),
+                      ),
+                      pw.Text(
+                        'Rs.${NumberFormat('#,##,###.00').format(invoice.totalAmount)}',
+                        style: pw.TextStyle(
+                          fontSize: 16,
+                          fontWeight: pw.FontWeight.bold,
+                          color: PdfColors.green800,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ],
