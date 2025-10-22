@@ -23,9 +23,9 @@ class DatabaseHelper {
     String path = join(await getDatabasesPath(), 'jewelry_shop.db');
     return await openDatabase(
       path,
-      version: 3, // Updated version to 3 for shop settings update
+      version: 4, // Updated version to 4 for inventory management
       onCreate: _onCreate,
-      onUpgrade: _onUpgrade, // Added onUpgrade callback
+      onUpgrade: _onUpgrade,
     );
   }
 
@@ -162,6 +162,59 @@ class DatabaseHelper {
     );
     await db.execute('CREATE INDEX idx_products_type ON products (type)');
 
+    // Inventory items table
+    await db.execute('''
+      CREATE TABLE inventory_items (
+        uid TEXT PRIMARY KEY,
+        sku TEXT UNIQUE NOT NULL,
+        category TEXT NOT NULL,
+        material TEXT NOT NULL,
+        purity TEXT NOT NULL,
+        gross_weight REAL NOT NULL,
+        net_weight REAL NOT NULL,
+        making_charge REAL NOT NULL,
+        quantity INTEGER NOT NULL DEFAULT 1,
+        location TEXT NOT NULL,
+        status TEXT NOT NULL,
+        photo_path TEXT,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+      )
+    ''');
+
+    // Inventory transactions table
+    await db.execute('''
+      CREATE TABLE inventory_transactions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        item_uid TEXT NOT NULL,
+        action TEXT NOT NULL,
+        user TEXT NOT NULL,
+        timestamp INTEGER NOT NULL,
+        notes TEXT,
+        FOREIGN KEY (item_uid) REFERENCES inventory_items (uid)
+      )
+    ''');
+
+    // Create indexes for inventory tables
+    await db.execute(
+      'CREATE INDEX idx_inventory_items_sku ON inventory_items (sku)',
+    );
+    await db.execute(
+      'CREATE INDEX idx_inventory_items_category ON inventory_items (category)',
+    );
+    await db.execute(
+      'CREATE INDEX idx_inventory_items_material ON inventory_items (material)',
+    );
+    await db.execute(
+      'CREATE INDEX idx_inventory_items_status ON inventory_items (status)',
+    );
+    await db.execute(
+      'CREATE INDEX idx_inventory_transactions_item_uid ON inventory_transactions (item_uid)',
+    );
+    await db.execute(
+      'CREATE INDEX idx_inventory_transactions_timestamp ON inventory_transactions (timestamp)',
+    );
+
     // Insert default admin user
     await db.insert('users', {
       'username': 'admin',
@@ -223,6 +276,60 @@ class DatabaseHelper {
       } catch (e) {
         print('Error updating shop settings: $e');
       }
+    }
+
+    if (oldVersion < 4) {
+      // Add inventory management tables
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS inventory_items (
+          uid TEXT PRIMARY KEY,
+          sku TEXT UNIQUE NOT NULL,
+          category TEXT NOT NULL,
+          material TEXT NOT NULL,
+          purity TEXT NOT NULL,
+          gross_weight REAL NOT NULL,
+          net_weight REAL NOT NULL,
+          making_charge REAL NOT NULL,
+          quantity INTEGER NOT NULL DEFAULT 1,
+          location TEXT NOT NULL,
+          status TEXT NOT NULL,
+          photo_path TEXT,
+          created_at INTEGER NOT NULL,
+          updated_at INTEGER NOT NULL
+        )
+      ''');
+
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS inventory_transactions (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          item_uid TEXT NOT NULL,
+          action TEXT NOT NULL,
+          user TEXT NOT NULL,
+          timestamp INTEGER NOT NULL,
+          notes TEXT,
+          FOREIGN KEY (item_uid) REFERENCES inventory_items (uid)
+        )
+      ''');
+
+      // Create indexes
+      await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_inventory_items_sku ON inventory_items (sku)',
+      );
+      await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_inventory_items_category ON inventory_items (category)',
+      );
+      await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_inventory_items_material ON inventory_items (material)',
+      );
+      await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_inventory_items_status ON inventory_items (status)',
+      );
+      await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_inventory_transactions_item_uid ON inventory_transactions (item_uid)',
+      );
+      await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_inventory_transactions_timestamp ON inventory_transactions (timestamp)',
+      );
     }
   }
 
@@ -639,5 +746,279 @@ class DatabaseHelper {
   Future<void> close() async {
     final db = await database;
     await db.close();
+  }
+
+  // ========== INVENTORY MANAGEMENT OPERATIONS ==========
+
+  // Inventory Item operations
+  Future<int> insertInventoryItem(Map<String, dynamic> item) async {
+    final db = await database;
+    return await db.insert('inventory_items', item);
+  }
+
+  Future<List<Map<String, dynamic>>> getAllInventoryItems() async {
+    final db = await database;
+    return await db.query('inventory_items', orderBy: 'created_at DESC');
+  }
+
+  Future<Map<String, dynamic>?> getInventoryItemByUid(String uid) async {
+    final db = await database;
+    final maps = await db.query(
+      'inventory_items',
+      where: 'uid = ?',
+      whereArgs: [uid],
+    );
+
+    if (maps.isNotEmpty) {
+      return maps.first;
+    }
+    return null;
+  }
+
+  Future<Map<String, dynamic>?> getInventoryItemBySku(String sku) async {
+    final db = await database;
+    final maps = await db.query(
+      'inventory_items',
+      where: 'sku = ?',
+      whereArgs: [sku],
+    );
+
+    if (maps.isNotEmpty) {
+      return maps.first;
+    }
+    return null;
+  }
+
+  Future<List<Map<String, dynamic>>> getInventoryItemsByCategory(
+    String category,
+  ) async {
+    final db = await database;
+    return await db.query(
+      'inventory_items',
+      where: 'category = ?',
+      whereArgs: [category],
+      orderBy: 'created_at DESC',
+    );
+  }
+
+  Future<List<Map<String, dynamic>>> getInventoryItemsByMaterial(
+    String material,
+  ) async {
+    final db = await database;
+    return await db.query(
+      'inventory_items',
+      where: 'material = ?',
+      whereArgs: [material],
+      orderBy: 'created_at DESC',
+    );
+  }
+
+  Future<List<Map<String, dynamic>>> getInventoryItemsByStatus(
+    String status,
+  ) async {
+    final db = await database;
+    return await db.query(
+      'inventory_items',
+      where: 'status = ?',
+      whereArgs: [status],
+      orderBy: 'created_at DESC',
+    );
+  }
+
+  Future<List<Map<String, dynamic>>> searchInventoryItems(String query) async {
+    final db = await database;
+    return await db.query(
+      'inventory_items',
+      where: 'sku LIKE ? OR category LIKE ? OR location LIKE ?',
+      whereArgs: ['%$query%', '%$query%', '%$query%'],
+      orderBy: 'created_at DESC',
+    );
+  }
+
+  Future<int> updateInventoryItem(String uid, Map<String, dynamic> item) async {
+    final db = await database;
+    return await db.update(
+      'inventory_items',
+      item,
+      where: 'uid = ?',
+      whereArgs: [uid],
+    );
+  }
+
+  Future<int> deleteInventoryItem(String uid) async {
+    final db = await database;
+    return await db.delete(
+      'inventory_items',
+      where: 'uid = ?',
+      whereArgs: [uid],
+    );
+  }
+
+  // Inventory Transaction operations
+  Future<int> insertInventoryTransaction(
+    Map<String, dynamic> transaction,
+  ) async {
+    final db = await database;
+    return await db.insert('inventory_transactions', transaction);
+  }
+
+  Future<List<Map<String, dynamic>>> getTransactionsByItemUid(
+    String itemUid,
+  ) async {
+    final db = await database;
+    return await db.query(
+      'inventory_transactions',
+      where: 'item_uid = ?',
+      whereArgs: [itemUid],
+      orderBy: 'timestamp DESC',
+    );
+  }
+
+  Future<List<Map<String, dynamic>>> getAllInventoryTransactions() async {
+    final db = await database;
+    return await db.query('inventory_transactions', orderBy: 'timestamp DESC');
+  }
+
+  Future<List<Map<String, dynamic>>> getTransactionsByDateRange(
+    DateTime startDate,
+    DateTime endDate,
+  ) async {
+    final db = await database;
+    return await db.query(
+      'inventory_transactions',
+      where: 'timestamp BETWEEN ? AND ?',
+      whereArgs: [
+        startDate.millisecondsSinceEpoch,
+        endDate.millisecondsSinceEpoch,
+      ],
+      orderBy: 'timestamp DESC',
+    );
+  }
+
+  // Generate next SKU
+  Future<String> generateSKU(String material, String category) async {
+    final db = await database;
+    final prefix = material == 'Gold' ? 'G' : 'S';
+    final categoryCode = category.substring(0, 3).toUpperCase();
+
+    final result = await db.rawQuery(
+      'SELECT COUNT(*) as count FROM inventory_items WHERE material = ?',
+      [material],
+    );
+
+    final count = result.first['count'] as int;
+    final sku =
+        '$prefix-$categoryCode-${(count + 1).toString().padLeft(4, '0')}';
+    return sku;
+  }
+
+  // Inventory Dashboard Statistics
+  Future<Map<String, dynamic>> getInventoryDashboardData() async {
+    final db = await database;
+
+    // Total items
+    final totalItemsResult = await db.rawQuery(
+      'SELECT COUNT(*) as count FROM inventory_items',
+    );
+
+    // In stock items
+    final inStockResult = await db.rawQuery(
+      "SELECT COUNT(*) as count FROM inventory_items WHERE status = 'in_stock'",
+    );
+
+    // Total gold weight
+    final goldWeightResult = await db.rawQuery(
+      "SELECT SUM(net_weight) as total FROM inventory_items WHERE material = 'Gold' AND status = 'in_stock'",
+    );
+
+    // Total silver weight
+    final silverWeightResult = await db.rawQuery(
+      "SELECT SUM(net_weight) as total FROM inventory_items WHERE material = 'Silver' AND status = 'in_stock'",
+    );
+
+    // Sold items count
+    final soldItemsResult = await db.rawQuery(
+      "SELECT COUNT(*) as count FROM inventory_items WHERE status = 'sold'",
+    );
+
+    // Issued items count
+    final issuedItemsResult = await db.rawQuery(
+      "SELECT COUNT(*) as count FROM inventory_items WHERE status = 'issued'",
+    );
+
+    // Low stock items (quantity < 5)
+    final lowStockResult = await db.rawQuery(
+      "SELECT COUNT(*) as count FROM inventory_items WHERE quantity < 5 AND status = 'in_stock'",
+    );
+
+    return {
+      'totalItems': totalItemsResult.first['count'] ?? 0,
+      'inStockCount': inStockResult.first['count'] ?? 0,
+      'goldWeightInStock': goldWeightResult.first['total'] ?? 0.0,
+      'silverWeightInStock': silverWeightResult.first['total'] ?? 0.0,
+      'soldCount': soldItemsResult.first['count'] ?? 0,
+      'issuedCount': issuedItemsResult.first['count'] ?? 0,
+      'lowStockCount': lowStockResult.first['count'] ?? 0,
+    };
+  }
+
+  // Get inventory report by date range
+  Future<Map<String, dynamic>> getInventoryReportByDateRange(
+    DateTime startDate,
+    DateTime endDate,
+  ) async {
+    final db = await database;
+
+    // Items sold in date range
+    final soldItemsResult = await db.rawQuery(
+      '''
+      SELECT 
+        COUNT(*) as count,
+        SUM(net_weight) as total_weight,
+        SUM(making_charge) as total_making_charge
+      FROM inventory_items i
+      JOIN inventory_transactions t ON i.uid = t.item_uid
+      WHERE t.action = 'sold' 
+        AND t.timestamp BETWEEN ? AND ?
+    ''',
+      [startDate.millisecondsSinceEpoch, endDate.millisecondsSinceEpoch],
+    );
+
+    // Items added in date range
+    final addedItemsResult = await db.rawQuery(
+      '''
+      SELECT COUNT(*) as count
+      FROM inventory_items
+      WHERE created_at BETWEEN ? AND ?
+    ''',
+      [startDate.millisecondsSinceEpoch, endDate.millisecondsSinceEpoch],
+    );
+
+    return {
+      'soldCount': soldItemsResult.first['count'] ?? 0,
+      'soldWeight': soldItemsResult.first['total_weight'] ?? 0.0,
+      'soldMakingCharges': soldItemsResult.first['total_making_charge'] ?? 0.0,
+      'addedCount': addedItemsResult.first['count'] ?? 0,
+    };
+  }
+
+  // Get top selling categories
+  Future<List<Map<String, dynamic>>> getTopSellingCategories(int limit) async {
+    final db = await database;
+    return await db.rawQuery(
+      '''
+      SELECT 
+        i.category,
+        COUNT(*) as count,
+        SUM(i.net_weight) as total_weight
+      FROM inventory_items i
+      JOIN inventory_transactions t ON i.uid = t.item_uid
+      WHERE t.action = 'sold'
+      GROUP BY i.category
+      ORDER BY count DESC
+      LIMIT ?
+    ''',
+      [limit],
+    );
   }
 }

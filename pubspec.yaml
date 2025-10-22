@@ -70,6 +70,19 @@ dependencies:
   
   # UI Components
   flutter_spinkit: ^5.2.1
+  
+  # Inventory Management
+  uuid: ^4.5.1
+  mobile_scanner: ^5.2.3
+  qr_flutter: ^4.1.0
+  barcode_widget: ^2.0.4
+  connectivity_plus: ^6.0.5
+  
+  # Firebase (Optional - for cloud sync)
+  firebase_core: ^3.6.0
+  cloud_firestore: ^5.4.4
+  firebase_auth: ^5.3.1
+  firebase_storage: ^12.3.4
 
 dev_dependencies:
   flutter_test:
