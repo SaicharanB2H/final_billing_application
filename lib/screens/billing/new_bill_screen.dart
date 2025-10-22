@@ -2,10 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
 import '../../models/product.dart';
+import '../../models/inventory_item.dart';
 import '../../providers/invoice_provider.dart';
 import '../../providers/rate_provider.dart';
 import '../../providers/dashboard_provider.dart';
+import '../../providers/inventory_provider.dart';
 import '../../services/invoice_service.dart';
 
 class NewBillScreen extends StatefulWidget {
@@ -20,6 +23,8 @@ class _NewBillScreenState extends State<NewBillScreen> {
   final TextEditingController _customerPhoneController =
       TextEditingController();
   final List<BillItem> _billItems = [];
+  final List<String> _scannedInventoryUids =
+      []; // Track scanned inventory items
   double _subtotal = 0.0;
   double _cgstAmount = 0.0;
   double _sgstAmount = 0.0;
@@ -66,6 +71,87 @@ class _NewBillScreenState extends State<NewBillScreen> {
         ),
       );
     });
+  }
+
+  void _scanInventoryItem() async {
+    final result = await showDialog<InventoryItem?>(
+      context: context,
+      builder: (context) => const _BarcodeScannerDialog(),
+    );
+
+    if (result != null) {
+      // Check if item is already scanned
+      if (_scannedInventoryUids.contains(result.uid)) {
+        _showSnackBar('This item is already added to the bill');
+        return;
+      }
+
+      // Check if item is available for sale
+      if (result.status != ItemStatus.inStock) {
+        _showSnackBar(
+          'This item is not available for sale (Status: ${ItemStatus.getDisplayName(result.status)})',
+        );
+        return;
+      }
+
+      // Add inventory item to bill with pre-filled values
+      setState(() {
+        final productType = result.material == ItemMaterial.gold
+            ? BillProductType.gold
+            : BillProductType.silver;
+
+        final rate = productType == BillProductType.gold
+            ? _goldRate
+            : _silverRate;
+        final wastage = productType == BillProductType.gold
+            ? _goldWastage
+            : _silverWastage;
+
+        // Extract purity value (e.g., "22K" -> 22, "925 Silver" -> 92.5)
+        double purityValue = _extractPurityValue(
+          result.purity,
+          result.material,
+        );
+
+        final billItem = BillItem(
+          id: DateTime.now().toString(),
+          productName: '${result.category} (${result.sku})',
+          productType: productType,
+          weight: result.netWeight,
+          purity: purityValue,
+          makingCharges: result.makingCharge,
+          rate: rate,
+          wastagePercent: wastage,
+          inventoryUid: result.uid, // Link to inventory item
+        );
+
+        billItem.calculateTotal();
+        _billItems.add(billItem);
+        _scannedInventoryUids.add(result.uid);
+        _calculateTotal();
+      });
+
+      _showSnackBar(
+        'Added ${result.category} (${result.sku}) to bill - Review details below',
+      );
+    }
+  }
+
+  double _extractPurityValue(String purity, String material) {
+    // Extract numeric value from purity string
+    if (material == ItemMaterial.gold) {
+      // For gold: "22K" -> 22, "18K" -> 18, etc.
+      final match = RegExp(r'(\d+)K').firstMatch(purity);
+      if (match != null) {
+        return double.parse(match.group(1)!);
+      }
+      return 22.0; // Default
+    } else {
+      // For silver: "925 Silver" -> 92.5, "999 Silver" -> 99.9
+      if (purity.contains('925')) return 92.5;
+      if (purity.contains('999')) return 99.9;
+      return 92.5; // Default
+    }
   }
 
   void _removeBillItem(int index) {
@@ -124,6 +210,10 @@ class _NewBillScreenState extends State<NewBillScreen> {
         context,
         listen: false,
       );
+      final inventoryProvider = Provider.of<InventoryProvider>(
+        context,
+        listen: false,
+      );
 
       // Convert BillItem objects to BillItemData
       List<BillItemData> billItemsData = _billItems
@@ -155,12 +245,25 @@ class _NewBillScreenState extends State<NewBillScreen> {
       );
 
       // Close loading dialog
+      if (!mounted) return;
       Navigator.pop(context);
 
       if (invoice != null) {
+        // Mark scanned inventory items as sold
+        for (final billItem in _billItems) {
+          if (billItem.inventoryUid != null) {
+            await inventoryProvider.markItemAsSold(
+              uid: billItem.inventoryUid!,
+              user: 'admin', // Can be updated with actual user
+              notes: 'Sold in invoice ${invoice.invoiceNumber}',
+            );
+          }
+        }
+
         // Generate and open PDF
         final pdfPath = await invoiceProvider.generateInvoicePdf(invoice);
 
+        if (!mounted) return;
         if (pdfPath != null) {
           // Show success dialog
           showDialog(
@@ -206,15 +309,18 @@ class _NewBillScreenState extends State<NewBillScreen> {
             ),
           );
         } else {
+          if (!mounted) return;
           _showSnackBar(
             'Bill saved but PDF generation failed: ${invoiceProvider.error}',
           );
         }
       } else {
+        if (!mounted) return;
         _showSnackBar('Failed to create bill: ${invoiceProvider.error}');
       }
     } catch (e) {
       // Close loading dialog if still open
+      if (!mounted) return;
       Navigator.pop(context);
       _showSnackBar('Error generating bill: $e');
     }
@@ -295,14 +401,28 @@ class _NewBillScreenState extends State<NewBillScreen> {
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    ElevatedButton.icon(
-                      onPressed: _addNewBillItem,
-                      icon: const Icon(Icons.add),
-                      label: Text('Add Item'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFFFD700),
-                        foregroundColor: Colors.white,
-                      ),
+                    Row(
+                      children: [
+                        ElevatedButton.icon(
+                          onPressed: _scanInventoryItem,
+                          icon: const Icon(Icons.qr_code_scanner),
+                          label: Text('Scan'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green,
+                            foregroundColor: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        ElevatedButton.icon(
+                          onPressed: _addNewBillItem,
+                          icon: const Icon(Icons.add),
+                          label: Text('Add'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFFFFD700),
+                            foregroundColor: Colors.white,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -314,16 +434,31 @@ class _NewBillScreenState extends State<NewBillScreen> {
 
                 const SizedBox(height: 20),
 
-                // Add Item Button (at bottom as well)
+                // Add Item Buttons (at bottom as well)
                 Center(
-                  child: ElevatedButton.icon(
-                    onPressed: _addNewBillItem,
-                    icon: const Icon(Icons.add),
-                    label: Text('Add Another Item'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFFFD700),
-                      foregroundColor: Colors.white,
-                    ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      ElevatedButton.icon(
+                        onPressed: _scanInventoryItem,
+                        icon: const Icon(Icons.qr_code_scanner),
+                        label: Text('Scan Item'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green,
+                          foregroundColor: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      ElevatedButton.icon(
+                        onPressed: _addNewBillItem,
+                        icon: const Icon(Icons.add),
+                        label: Text('Add Manual Item'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFFFD700),
+                          foregroundColor: Colors.white,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
 
@@ -394,12 +529,48 @@ class _NewBillScreenState extends State<NewBillScreen> {
             Row(
               children: [
                 Expanded(
-                  child: Text(
-                    'Item ${index + 1}',
-                    style: GoogleFonts.lato(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
+                  child: Row(
+                    children: [
+                      Text(
+                        'Item ${index + 1}',
+                        style: GoogleFonts.lato(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      if (item.inventoryUid != null) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.green,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.qr_code_scanner,
+                                size: 14,
+                                color: Colors.white,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                'Scanned',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                 ),
                 IconButton(
@@ -410,6 +581,7 @@ class _NewBillScreenState extends State<NewBillScreen> {
             ),
             const SizedBox(height: 12),
             TextField(
+              controller: TextEditingController(text: item.productName),
               decoration: InputDecoration(
                 labelText: 'Product Name',
                 border: OutlineInputBorder(
@@ -462,6 +634,9 @@ class _NewBillScreenState extends State<NewBillScreen> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: TextField(
+                    controller: TextEditingController(
+                      text: item.weight > 0 ? item.weight.toString() : '',
+                    ),
                     keyboardType: TextInputType.number,
                     decoration: InputDecoration(
                       labelText: 'Weight (g)',
@@ -485,6 +660,9 @@ class _NewBillScreenState extends State<NewBillScreen> {
               children: [
                 Expanded(
                   child: TextField(
+                    controller: TextEditingController(
+                      text: item.purity > 0 ? item.purity.toString() : '',
+                    ),
                     keyboardType: TextInputType.number,
                     decoration: InputDecoration(
                       labelText: item.productType == BillProductType.gold
@@ -510,6 +688,11 @@ class _NewBillScreenState extends State<NewBillScreen> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: TextField(
+                    controller: TextEditingController(
+                      text: item.makingCharges > 0
+                          ? item.makingCharges.toString()
+                          : '',
+                    ),
                     keyboardType: TextInputType.number,
                     decoration: InputDecoration(
                       labelText: 'Making Charges',
@@ -685,6 +868,7 @@ class BillItem {
   double rate;
   double wastagePercent;
   double totalAmount;
+  String? inventoryUid; // Link to inventory item if scanned
 
   BillItem({
     required this.id,
@@ -696,6 +880,7 @@ class BillItem {
     required this.rate,
     this.wastagePercent = 0.0,
     this.totalAmount = 0.0,
+    this.inventoryUid,
   });
 
   void calculateTotal() {
@@ -712,5 +897,152 @@ class BillItem {
 
     // Final calculation: Metal Value + Wastage + Making Charges
     totalAmount = metalValue + wastageAmount + makingCharges;
+  }
+}
+
+// Barcode Scanner Dialog
+class _BarcodeScannerDialog extends StatefulWidget {
+  const _BarcodeScannerDialog();
+
+  @override
+  State<_BarcodeScannerDialog> createState() => _BarcodeScannerDialogState();
+}
+
+class _BarcodeScannerDialogState extends State<_BarcodeScannerDialog> {
+  MobileScannerController cameraController = MobileScannerController();
+  bool _isProcessing = false;
+
+  @override
+  void dispose() {
+    cameraController.dispose();
+    super.dispose();
+  }
+
+  void _handleBarcode(BarcodeCapture capture) async {
+    if (_isProcessing) return;
+
+    final List<Barcode> barcodes = capture.barcodes;
+    if (barcodes.isEmpty) return;
+
+    final String? code = barcodes.first.rawValue;
+    if (code == null) return;
+
+    setState(() {
+      _isProcessing = true;
+    });
+
+    try {
+      // The code is the SKU (barcode data)
+      final sku = code;
+
+      // Fetch item from database by SKU
+      final provider = Provider.of<InventoryProvider>(context, listen: false);
+      final item = await provider.getItemBySku(sku);
+
+      if (!mounted) return;
+
+      if (item != null) {
+        // Return the item and close dialog
+        Navigator.of(context).pop(item);
+      } else {
+        _showError('Item not found: $sku');
+        setState(() {
+          _isProcessing = false;
+        });
+      }
+    } catch (e) {
+      _showError('Invalid barcode: $e');
+      setState(() {
+        _isProcessing = false;
+      });
+    }
+  }
+
+  void _showError(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: Colors.red),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      child: Container(
+        height: 500,
+        child: Column(
+          children: [
+            AppBar(
+              title: const Text('Scan Barcode'),
+              automaticallyImplyLeading: false,
+              actions: [
+                IconButton(
+                  icon: const Icon(Icons.flash_on),
+                  onPressed: () => cameraController.toggleTorch(),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: () => Navigator.of(context).pop(),
+                ),
+              ],
+            ),
+            Expanded(
+              child: Stack(
+                children: [
+                  MobileScanner(
+                    controller: cameraController,
+                    onDetect: _handleBarcode,
+                  ),
+                  // Scanning overlay
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.5),
+                    ),
+                    child: Center(
+                      child: Container(
+                        width: 250,
+                        height: 100,
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.white, width: 3),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                  ),
+                  // Instructions
+                  Positioned(
+                    bottom: 20,
+                    left: 0,
+                    right: 0,
+                    child: Container(
+                      padding: const EdgeInsets.all(16),
+                      child: const Card(
+                        child: Padding(
+                          padding: EdgeInsets.all(16),
+                          child: Text(
+                            'Position the barcode within the frame',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  // Processing indicator
+                  if (_isProcessing)
+                    Container(
+                      color: Colors.black54,
+                      child: const Center(child: CircularProgressIndicator()),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

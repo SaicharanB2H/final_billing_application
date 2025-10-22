@@ -3,6 +3,11 @@ import 'package:google_fonts/google_fonts.dart';
 import '../screens/billing/bills_history_screen.dart';
 import '../screens/billing/new_bill_screen.dart';
 import '../screens/customers/customers_screen.dart';
+import '../screens/inventory/inventory_dashboard_screen.dart';
+import '../screens/inventory/add_item_screen.dart';
+import '../screens/inventory/scan_screen.dart';
+import '../screens/inventory/all_items_screen.dart';
+import '../screens/inventory/inventory_reports_screen.dart';
 
 class MainDrawer extends StatelessWidget {
   const MainDrawer({super.key});
@@ -106,6 +111,81 @@ class MainDrawer extends StatelessWidget {
                   onTap: () {
                     Navigator.pop(context);
                     // Navigate to reports
+                  },
+                ),
+                const Divider(),
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                  child: Text(
+                    'INVENTORY MANAGEMENT',
+                    style: GoogleFonts.lato(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                ),
+                _buildDrawerItem(
+                  icon: Icons.dashboard_outlined,
+                  title: 'Inventory Dashboard',
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const InventoryDashboardScreen(),
+                      ),
+                    );
+                  },
+                ),
+                _buildDrawerItem(
+                  icon: Icons.add_box_outlined,
+                  title: 'Add New Item',
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const AddItemScreen(),
+                      ),
+                    );
+                  },
+                ),
+                _buildDrawerItem(
+                  icon: Icons.qr_code_scanner,
+                  title: 'Scan Barcode',
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const ScanScreen(),
+                      ),
+                    );
+                  },
+                ),
+                _buildDrawerItem(
+                  icon: Icons.list_alt,
+                  title: 'View All Items',
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const AllItemsScreen(),
+                      ),
+                    );
+                  },
+                ),
+                _buildDrawerItem(
+                  icon: Icons.assessment_outlined,
+                  title: 'Inventory Reports',
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const InventoryReportsScreen(),
+                      ),
+                    );
                   },
                 ),
                 const Divider(),
