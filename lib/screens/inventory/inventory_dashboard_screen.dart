@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'dart:io';
 import '../../providers/inventory_provider.dart';
+import '../../services/data_export_service.dart';
 import 'add_item_screen.dart';
 import 'scan_screen.dart';
 import 'all_items_screen.dart';
@@ -25,6 +27,168 @@ class _InventoryDashboardScreenState extends State<InventoryDashboardScreen> {
     final provider = Provider.of<InventoryProvider>(context, listen: false);
     await provider.loadInventoryItems();
     await provider.loadDashboardStats();
+  }
+
+  Future<void> _exportDatabase(BuildContext context) async {
+    try {
+      // Show loading dialog
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const AlertDialog(
+          content: Row(
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(width: 16),
+              Text('Exporting database...'),
+            ],
+          ),
+        ),
+      );
+
+      final exportService = DataExportService();
+      final filePath = await exportService.exportInventoryDatabase();
+
+      if (!mounted) return;
+      Navigator.pop(context); // Close loading dialog
+
+      // Show success dialog
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Row(
+            children: [
+              Icon(Icons.check_circle, color: Colors.green, size: 28),
+              SizedBox(width: 8),
+              Text('Database Exported'),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Database file exported successfully!'),
+              const SizedBox(height: 8),
+              Text(
+                'Saved to: ${filePath.split('/').last}',
+                style: const TextStyle(fontSize: 12, color: Colors.grey),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () async {
+                Navigator.pop(context);
+                await exportService.shareExportedFile(filePath);
+              },
+              child: const Text('Share'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.pop(context); // Close loading dialog
+
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Export Failed'),
+          content: Text('Error: $e'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+    }
+  }
+
+  Future<void> _exportToExcel(BuildContext context) async {
+    try {
+      // Show loading dialog
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const AlertDialog(
+          content: Row(
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(width: 16),
+              Text('Generating Excel file...'),
+            ],
+          ),
+        ),
+      );
+
+      final exportService = DataExportService();
+      final filePath = await exportService.exportInventoryToExcel();
+
+      if (!mounted) return;
+      Navigator.pop(context); // Close loading dialog
+
+      // Show success dialog
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Row(
+            children: [
+              Icon(Icons.check_circle, color: Colors.green, size: 28),
+              SizedBox(width: 8),
+              Text('Excel Exported'),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Inventory exported to Excel successfully!'),
+              const SizedBox(height: 8),
+              Text(
+                'Saved to: ${filePath.split('/').last}',
+                style: const TextStyle(fontSize: 12, color: Colors.grey),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () async {
+                Navigator.pop(context);
+                await exportService.shareExportedFile(filePath);
+              },
+              child: const Text('Share'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.pop(context); // Close loading dialog
+
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Export Failed'),
+          content: Text('Error: $e'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+    }
   }
 
   @override
@@ -254,6 +418,30 @@ class _InventoryDashboardScreenState extends State<InventoryDashboardScreen> {
                     ),
                   );
                 },
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: _buildActionButton(
+                context,
+                'Export DB',
+                Icons.file_download,
+                const Color(0xFF1976D2),
+                () => _exportDatabase(context),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildActionButton(
+                context,
+                'Export Excel',
+                Icons.table_chart,
+                const Color(0xFF388E3C),
+                () => _exportToExcel(context),
               ),
             ),
           ],

@@ -147,15 +147,22 @@ class ItemMaterial {
 
 // Item purity levels
 class ItemPurity {
+  // Gold purities
   static const String k24 = '24K';
   static const String k22 = '22K';
   static const String k18 = '18K';
   static const String k14 = '14K';
-  static const String s925 = '925 Silver';
-  static const String s999 = '999 Silver';
+
+  // Silver purities
+  static const String s999 = '999 Silver'; // Fine Silver (99.9%)
+  static const String s958 = '958 Silver'; // Britannia Silver (95.8%)
+  static const String s925 = '925 Silver'; // Sterling Silver (92.5%)
+  static const String s900 = '900 Silver'; // Coin Silver (90%)
+  static const String s835 = '835 Silver'; // Continental Silver (83.5%)
+  static const String s800 = '800 Silver'; // European Silver (80%)
 
   static List<String> goldPurities = [k24, k22, k18, k14];
-  static List<String> silverPurities = [s925, s999];
+  static List<String> silverPurities = [s999, s958, s925, s900, s835, s800];
 
   static List<String> getPuritiesForMaterial(String material) {
     if (material == ItemMaterial.gold) {

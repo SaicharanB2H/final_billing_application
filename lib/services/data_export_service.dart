@@ -3,10 +3,13 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'package:excel/excel.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart';
+import 'package:sqflite/sqflite.dart';
 import 'package:intl/intl.dart';
 import 'package:printing/printing.dart';
 import '../models/invoice.dart';
 import '../models/customer.dart';
+import '../models/inventory_item.dart';
 import '../database/database_helper.dart';
 
 class DataExportService {
@@ -491,5 +494,251 @@ class DataExportService {
     } catch (e) {
       throw Exception('Failed to get export statistics: $e');
     }
+  }
+
+  // Export inventory database file (SQLite)
+  Future<String> exportInventoryDatabase() async {
+    try {
+      // Get the database file path
+      final dbPath = join(await getDatabasesPath(), 'jewelry_shop.db');
+      final dbFile = File(dbPath);
+
+      if (!await dbFile.exists()) {
+        throw Exception('Database file not found');
+      }
+
+      // Create export directory
+      final directory = await getApplicationDocumentsDirectory();
+      final exportDir = Directory('${directory.path}/exports');
+      if (!await exportDir.exists()) {
+        await exportDir.create(recursive: true);
+      }
+
+      // Create export file with timestamp
+      final fileName =
+          'inventory_database_${DateFormat('yyyyMMdd_HHmmss').format(DateTime.now())}.db';
+      final filePath = '${exportDir.path}/$fileName';
+
+      // Copy database file
+      await dbFile.copy(filePath);
+
+      return filePath;
+    } catch (e) {
+      throw Exception('Failed to export inventory database: $e');
+    }
+  }
+
+  // Export inventory to Excel format
+  Future<String> exportInventoryToExcel() async {
+    try {
+      // Get all inventory items from database
+      final db = await _dbHelper.database;
+      final List<Map<String, dynamic>> inventoryData = await db.query(
+        'inventory_items',
+        orderBy: 'created_at DESC',
+      );
+
+      var excel = Excel.createExcel();
+      Sheet sheet = excel['Inventory Items'];
+
+      // Add headers
+      sheet.cell(CellIndex.indexByString('A1')).value = TextCellValue('UID');
+      sheet.cell(CellIndex.indexByString('B1')).value = TextCellValue('SKU');
+      sheet.cell(CellIndex.indexByString('C1')).value = TextCellValue(
+        'Category',
+      );
+      sheet.cell(CellIndex.indexByString('D1')).value = TextCellValue(
+        'Material',
+      );
+      sheet.cell(CellIndex.indexByString('E1')).value = TextCellValue('Purity');
+      sheet.cell(CellIndex.indexByString('F1')).value = TextCellValue(
+        'Gross Weight (g)',
+      );
+      sheet.cell(CellIndex.indexByString('G1')).value = TextCellValue(
+        'Net Weight (g)',
+      );
+      sheet.cell(CellIndex.indexByString('H1')).value = TextCellValue(
+        'Making Charge',
+      );
+      sheet.cell(CellIndex.indexByString('I1')).value = TextCellValue(
+        'Quantity',
+      );
+      sheet.cell(CellIndex.indexByString('J1')).value = TextCellValue(
+        'Location',
+      );
+      sheet.cell(CellIndex.indexByString('K1')).value = TextCellValue('Status');
+      sheet.cell(CellIndex.indexByString('L1')).value = TextCellValue(
+        'Created Date',
+      );
+      sheet.cell(CellIndex.indexByString('M1')).value = TextCellValue(
+        'Updated Date',
+      );
+
+      // Add inventory data
+      int row = 2;
+      for (var item in inventoryData) {
+        sheet.cell(CellIndex.indexByString('A$row')).value = TextCellValue(
+          item['uid'] as String,
+        );
+        sheet.cell(CellIndex.indexByString('B$row')).value = TextCellValue(
+          item['sku'] as String,
+        );
+        sheet.cell(CellIndex.indexByString('C$row')).value = TextCellValue(
+          item['category'] as String,
+        );
+        sheet.cell(CellIndex.indexByString('D$row')).value = TextCellValue(
+          item['material'] as String,
+        );
+        sheet.cell(CellIndex.indexByString('E$row')).value = TextCellValue(
+          item['purity'] as String,
+        );
+        sheet.cell(CellIndex.indexByString('F$row')).value = DoubleCellValue(
+          (item['gross_weight'] as num).toDouble(),
+        );
+        sheet.cell(CellIndex.indexByString('G$row')).value = DoubleCellValue(
+          (item['net_weight'] as num).toDouble(),
+        );
+        sheet.cell(CellIndex.indexByString('H$row')).value = DoubleCellValue(
+          (item['making_charge'] as num).toDouble(),
+        );
+        sheet.cell(CellIndex.indexByString('I$row')).value = IntCellValue(
+          item['quantity'] as int,
+        );
+        sheet.cell(CellIndex.indexByString('J$row')).value = TextCellValue(
+          item['location'] as String,
+        );
+        sheet.cell(CellIndex.indexByString('K$row')).value = TextCellValue(
+          _getInventoryStatusText(item['status'] as String),
+        );
+        sheet.cell(CellIndex.indexByString('L$row')).value = TextCellValue(
+          DateFormat('dd/MM/yyyy HH:mm').format(
+            DateTime.fromMillisecondsSinceEpoch(item['created_at'] as int),
+          ),
+        );
+        sheet.cell(CellIndex.indexByString('M$row')).value = TextCellValue(
+          DateFormat('dd/MM/yyyy HH:mm').format(
+            DateTime.fromMillisecondsSinceEpoch(item['updated_at'] as int),
+          ),
+        );
+
+        row++;
+      }
+
+      // Create summary sheet
+      Sheet summarySheet = excel['Summary'];
+
+      summarySheet.cell(CellIndex.indexByString('A1')).value = TextCellValue(
+        'Inventory Summary Report',
+      );
+      summarySheet.cell(CellIndex.indexByString('A2')).value = TextCellValue(
+        'Generated: ${DateFormat('dd/MM/yyyy HH:mm').format(DateTime.now())}',
+      );
+
+      summarySheet.cell(CellIndex.indexByString('A4')).value = TextCellValue(
+        'Total Items:',
+      );
+      summarySheet.cell(CellIndex.indexByString('B4')).value = IntCellValue(
+        inventoryData.length,
+      );
+
+      // Calculate stats
+      int goldCount = inventoryData
+          .where((item) => item['material'] == ItemMaterial.gold)
+          .length;
+      int silverCount = inventoryData
+          .where((item) => item['material'] == ItemMaterial.silver)
+          .length;
+      int inStockCount = inventoryData
+          .where((item) => item['status'] == ItemStatus.inStock)
+          .length;
+      int soldCount = inventoryData
+          .where((item) => item['status'] == ItemStatus.sold)
+          .length;
+
+      double totalGoldWeight = inventoryData
+          .where(
+            (item) =>
+                item['material'] == ItemMaterial.gold &&
+                item['status'] == ItemStatus.inStock,
+          )
+          .fold(0.0, (sum, item) => sum + (item['net_weight'] as num));
+
+      double totalSilverWeight = inventoryData
+          .where(
+            (item) =>
+                item['material'] == ItemMaterial.silver &&
+                item['status'] == ItemStatus.inStock,
+          )
+          .fold(0.0, (sum, item) => sum + (item['net_weight'] as num));
+
+      summarySheet.cell(CellIndex.indexByString('A5')).value = TextCellValue(
+        'Gold Items:',
+      );
+      summarySheet.cell(CellIndex.indexByString('B5')).value = IntCellValue(
+        goldCount,
+      );
+
+      summarySheet.cell(CellIndex.indexByString('A6')).value = TextCellValue(
+        'Silver Items:',
+      );
+      summarySheet.cell(CellIndex.indexByString('B6')).value = IntCellValue(
+        silverCount,
+      );
+
+      summarySheet.cell(CellIndex.indexByString('A7')).value = TextCellValue(
+        'In Stock:',
+      );
+      summarySheet.cell(CellIndex.indexByString('B7')).value = IntCellValue(
+        inStockCount,
+      );
+
+      summarySheet.cell(CellIndex.indexByString('A8')).value = TextCellValue(
+        'Sold:',
+      );
+      summarySheet.cell(CellIndex.indexByString('B8')).value = IntCellValue(
+        soldCount,
+      );
+
+      summarySheet.cell(CellIndex.indexByString('A10')).value = TextCellValue(
+        'Total Gold Weight (in stock):',
+      );
+      summarySheet.cell(CellIndex.indexByString('B10')).value = TextCellValue(
+        '${totalGoldWeight.toStringAsFixed(2)} g',
+      );
+
+      summarySheet.cell(CellIndex.indexByString('A11')).value = TextCellValue(
+        'Total Silver Weight (in stock):',
+      );
+      summarySheet.cell(CellIndex.indexByString('B11')).value = TextCellValue(
+        '${totalSilverWeight.toStringAsFixed(2)} g',
+      );
+
+      // Save Excel file
+      final directory = await getApplicationDocumentsDirectory();
+      final exportDir = Directory('${directory.path}/exports');
+      if (!await exportDir.exists()) {
+        await exportDir.create(recursive: true);
+      }
+
+      final fileName =
+          'inventory_export_${DateFormat('yyyyMMdd_HHmmss').format(DateTime.now())}.xlsx';
+      final filePath = '${exportDir.path}/$fileName';
+
+      List<int>? excelBytes = excel.save();
+      if (excelBytes == null) {
+        throw Exception('Failed to generate Excel file');
+      }
+      final file = File(filePath);
+      await file.writeAsBytes(excelBytes);
+
+      return filePath;
+    } catch (e) {
+      throw Exception('Failed to export inventory to Excel: $e');
+    }
+  }
+
+  // Get inventory status text
+  String _getInventoryStatusText(String status) {
+    return ItemStatus.getDisplayName(status);
   }
 }

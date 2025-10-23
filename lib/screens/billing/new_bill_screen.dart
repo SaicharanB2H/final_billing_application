@@ -580,8 +580,9 @@ class _NewBillScreenState extends State<NewBillScreen> {
               ],
             ),
             const SizedBox(height: 12),
-            TextField(
-              controller: TextEditingController(text: item.productName),
+            TextFormField(
+              key: ValueKey('productName_${item.id}'),
+              initialValue: item.productName,
               decoration: InputDecoration(
                 labelText: 'Product Name',
                 border: OutlineInputBorder(
@@ -633,10 +634,9 @@ class _NewBillScreenState extends State<NewBillScreen> {
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: TextField(
-                    controller: TextEditingController(
-                      text: item.weight > 0 ? item.weight.toString() : '',
-                    ),
+                  child: TextFormField(
+                    key: ValueKey('weight_${item.id}'),
+                    initialValue: item.weight > 0 ? item.weight.toString() : '',
                     keyboardType: TextInputType.number,
                     decoration: InputDecoration(
                       labelText: 'Weight (g)',
@@ -659,10 +659,9 @@ class _NewBillScreenState extends State<NewBillScreen> {
             Row(
               children: [
                 Expanded(
-                  child: TextField(
-                    controller: TextEditingController(
-                      text: item.purity > 0 ? item.purity.toString() : '',
-                    ),
+                  child: TextFormField(
+                    key: ValueKey('purity_${item.id}'),
+                    initialValue: item.purity > 0 ? item.purity.toString() : '',
                     keyboardType: TextInputType.number,
                     decoration: InputDecoration(
                       labelText: item.productType == BillProductType.gold
@@ -687,12 +686,11 @@ class _NewBillScreenState extends State<NewBillScreen> {
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: TextField(
-                    controller: TextEditingController(
-                      text: item.makingCharges > 0
-                          ? item.makingCharges.toString()
-                          : '',
-                    ),
+                  child: TextFormField(
+                    key: ValueKey('makingCharges_${item.id}'),
+                    initialValue: item.makingCharges > 0
+                        ? item.makingCharges.toString()
+                        : '',
                     keyboardType: TextInputType.number,
                     decoration: InputDecoration(
                       labelText: 'Making Charges',
